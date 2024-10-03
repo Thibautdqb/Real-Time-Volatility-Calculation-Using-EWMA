@@ -14,6 +14,7 @@ import numpy as np
 import time
 import streamlit as st 
 import matplotlib.pyplot as plt
+import plotly.graph_objs as go
 
 
 st.set_page_config(layout="wide")
@@ -41,22 +42,25 @@ volatility_data = []
 
 
 # Fonction pour mettre à jour le graphique dans Streamlit
+# Fonction pour mettre à jour le graphique dans Streamlit
 def update_chart():
     global volatility_data
 
     if len(volatility_data) > 0:
-        # Convertir les données en DataFrame pour plus de facilité
         df = pd.DataFrame(volatility_data)
         df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
 
-        plt.figure(figsize=(10, 6))
-        plt.plot(df['timestamp'], df['volatility'], label='Volatilité (EWMA)')
-        plt.xlabel("Temps")
-        plt.ylabel("Volatilité")
-        plt.title("Volatilité estimée (EWMA) en temps réel")
-        plt.legend()
+        # Graphique interactif avec Plotly
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df['timestamp'], y=df['volatility'], mode='lines', name='Volatilité (EWMA)'))
+        fig.update_layout(
+            title="Volatilité estimée (EWMA) en temps réel",
+            xaxis_title="Temps",
+            yaxis_title="Volatilité",
+            template="plotly_dark"
+        )
 
-        chart_placeholder.pyplot(plt.gcf())
+        chart_placeholder.plotly_chart(fig)
 
 
 # Fonction appelée à l'ouverture de la connexion WebSocket
