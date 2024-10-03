@@ -126,7 +126,6 @@ def appliquer_modele_ewma(data_list, lambda_factor=0.10):
     # Limiter le tableau à 100 dernières valeurs, puis envoyer un e-mail
     if len(volatility_data) >= 10:
         envoyer_email_rapport_volatilites(volatility_data)
-        volatility_data.clear()  # Réinitialiser la liste après envoi
     return volatility
 
 
