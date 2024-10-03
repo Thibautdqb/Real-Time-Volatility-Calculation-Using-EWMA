@@ -5,7 +5,7 @@
     "codespaces": {
       "openFiles": [
         "README.md",
-        "App/StreamlitApp.py"
+        "App/lol.py"
       ]
     },
     "vscode": {
@@ -16,9 +16,9 @@
       ]
     }
   },
-  "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; python3 -m pip install --upgrade pip; [ -f requirements.txt ] && pip3 install --user -r requirements.txt; echo '✅ Packages installed and Requirements met'",
+  "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; python3 -m pip install --upgrade pip; [ -f App/requirements.txt ] && pip3 install --user -r App/requirements.txt; echo '✅ Packages installed and Requirements met'",
   "postAttachCommand": {
-    "server": "streamlit run App/StreamlitApp.py --server.enableCORS false --server.enableXsrfProtection false"
+    "server": "streamlit run App/lol.py --server.enableCORS false --server.enableXsrfProtection false"
   },
   "portsAttributes": {
     "8501": {
