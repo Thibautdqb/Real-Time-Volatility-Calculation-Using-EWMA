@@ -16,6 +16,7 @@
       ]
     }
   },
+  "workspaceFolder": "/workspaces/real-time-volatility-calculation-using-ewma",
   "updateContentCommand": "[ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt; python3 -m pip install --upgrade pip; [ -f App/requirements.txt ] && pip3 install --user -r App/requirements.txt; echo '✅ Packages installed and Requirements met'",
   "postAttachCommand": {
     "server": "streamlit run App/lol.py --server.enableCORS false --server.enableXsrfProtection false"
