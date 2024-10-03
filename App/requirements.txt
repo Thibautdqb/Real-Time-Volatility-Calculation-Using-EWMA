@@ -5,4 +5,4 @@ numpy
 matplotlib
 arch
 matplotlib
-ploty
+plotly
