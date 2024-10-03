@@ -128,12 +128,11 @@ def appliquer_modele_ewma(data_list, lambda_factor=0.10):
     volatility_data.append({'timestamp': timestamp, 'volatility': volatility})
 
     # Limiter le tableau à 100 dernières valeurs, puis envoyer un e-mail
-    if len(volatility_data) >= 10:
-        last_100_volatilities = volatility_data[-100:]  # Copier les 100 dernières valeurs pour l'email
-        envoyer_email_rapport_volatilites(last_100_volatilities)   
-        last_100_volatilities.clear()  # Réinitialiser la liste après envoi
-
+    if len(volatility_data) >= 100:
+        envoyer_email_rapport_volatilites(volatility_data)        
+        volatility_data.clear()  
     return volatility
+
 
 
 def envoyer_email_rapport_volatilites(volatility_data):
