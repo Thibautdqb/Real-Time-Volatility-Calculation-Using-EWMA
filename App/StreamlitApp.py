@@ -32,7 +32,7 @@ subscribed_channels = set()
 data_list = []
 
 collecte_terminee = False  # Variable pour suivre l'état de la collecte
-last_volatility_calc_time = time.time() - 180 
+last_volatility_calc_time = time.time() - 3 
 
 
 volatility_data = []
@@ -95,7 +95,7 @@ def appliquer_modele_ewma(data_list, lambda_factor=0.10):
     prices = pd.Series([item['mark_price'] for item in data_list])
 
     # Vérifier s'il y a suffisamment de données pour calculer la volatilité
-    if len(prices) < 300:
+    if len(prices) < 100:
         print("Pas assez de données pour calculer la volatilité.")
         return None
 
@@ -245,7 +245,7 @@ def on_message(ws, message):
             })
 
             # Maintenir la taille de la fenêtre à 100 éléments
-            if len(data_list) > 1000:
+            if len(data_list) > 100:
                 data_list.pop(0)  # Retirer l'élément le plus ancien
             
             # Vérifier si 10  secondes se sont écoulées depuis le dernier calcul de volatilité
