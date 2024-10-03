@@ -1,5 +1,5 @@
 streamlit
-websocket-client
+websocket
 pandas
 numpy
 matplotlib
