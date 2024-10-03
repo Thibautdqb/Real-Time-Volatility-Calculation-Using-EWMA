@@ -254,7 +254,7 @@ def on_message(ws, message):
                 data_list.pop(0)  # Retirer l'élément le plus ancien
             
             # Vérifier si 10  secondes se sont écoulées depuis le dernier calcul de volatilité
-            if time.time() - last_volatility_calc_time >= 2:
+            if time.time() - last_volatility_calc_time >= 0.1:
                 appliquer_modele_ewma(data_list)  # Calculer la volatilité
                 update_chart()
 
