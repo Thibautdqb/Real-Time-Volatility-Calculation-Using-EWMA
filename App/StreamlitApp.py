@@ -20,6 +20,8 @@ import plotly.graph_objs as go
 st.set_page_config(layout="wide")
 st.title("Volatilité en temps réel (EWMA)")
 
+st.write("Cette application Streamlit permet de suivre en temps réel la volatilité du contrat perpétuel BTC-PERPETUAL, calculée instantanément à partir des données de marché transmises via WebSocket. Un graphique interactif illustre en continu l'évolution de la volatilité de cet actif. Lorsque 100 estimations en temps réel sont collectées, un rapport complet est automatiquement envoyé par e-mail.")
+
 chart_placeholder = st.empty()
 
 
