@@ -17,7 +17,17 @@ import matplotlib.pyplot as plt
 import plotly.graph_objs as go
 
 
-st.set_page_config(layout="wide")
+st.set_page_config(
+    page_title="Analyse de Volatilité BTC-PERPETUAL",  # Titre de la page
+    page_icon="📊",  # Icône de la page (emoji ou fichier image)
+    layout="wide",  # Largeur de la page ('centered' ou 'wide')
+    initial_sidebar_state="expanded",  # État initial de la barre latérale ('collapsed' ou 'expanded')
+    menu_items={
+        'Get Help': 'https://www.example.com/help',  # Lien vers la page d'aide
+        'Report a bug': 'https://www.example.com/bug',  # Lien vers la page de rapport de bug
+        'About': "# Analyse en temps réel de la volatilité du contrat BTC-PERPETUAL\nCette application analyse la volatilité du contrat perpétuel Bitcoin en temps réel à l'aide du modèle EWMA."  # Texte pour la section "À propos"
+    }
+)
 st.title("Volatilité en temps réel (EWMA)")
 
 st.write("Cette application Streamlit permet de suivre en temps réel la volatilité du contrat perpétuel BTC-PERPETUAL, calculée instantanément à partir des données de marché transmises via WebSocket. Un graphique interactif illustre en continu l'évolution de la volatilité de cet actif. Lorsque 100 estimations en temps réel sont collectées, un rapport complet est automatiquement envoyé par e-mail.")
