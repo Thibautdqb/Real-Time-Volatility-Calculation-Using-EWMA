@@ -66,7 +66,7 @@ def update_chart():
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=df['timestamp'], y=df['volatility'], mode='lines', name='Volatilité (EWMA)'))
         fig.update_layout(
-            title="Volatilité estimée (EWMA) en temps réel",
+            title="Estimated volatility (EWMA) in real time",
             xaxis_title="Temps",
             yaxis_title="Volatilité",
             template="plotly_dark"
