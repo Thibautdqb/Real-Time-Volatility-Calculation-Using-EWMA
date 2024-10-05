@@ -133,7 +133,7 @@ def appliquer_modele_ewma(data_list, lambda_factor=0.10):
     # La volatilité est la racine carrée de la variance
     volatility = np.sqrt(variance)
     
-    print(f"Volatilité estimée (EWMA) : {volatility}")
+    print(f"Estimated volatility (EWMA) : {volatility}")
     
     # Enregistrer la volatilité avec un timestamp
     timestamp = time.time()
