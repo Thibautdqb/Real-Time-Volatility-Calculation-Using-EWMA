@@ -35,7 +35,7 @@ data_list = []
 collecte_terminee = False  # Variable pour suivre l'état de la collecte
 last_volatility_calc_time = time.time() - 3 
 
-
+progress_bar = st.progress(0)  # Valeur initiale de 0%
 volatility_data = []
 
 
@@ -248,7 +248,8 @@ def on_message(ws, message):
                 'timestamp': timestamp,
                 'mark_price': data['mark_price']
             })
-
+            progress_percentage = min(100, len(data_list))
+            progress_bar.progress(progress_percentage)
             # Maintenir la taille de la fenêtre à 100 éléments
             if len(data_list) > 100:
                 data_list.pop(0)  # Retirer l'élément le plus ancien
