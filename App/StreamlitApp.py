@@ -1,7 +1,7 @@
 import websocket
 import json
 import os
-from config import API_KEY, API_SECRET , TOEMAIL, FROMEMAIL, EMAILPASSWORD
+from config import API_KEY, API_SECRET , FROMEMAIL, EMAILPASSWORD
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -34,6 +34,16 @@ st.write("This Streamlit application enables you to track the volatility of the 
 
 chart_placeholder = st.empty()
 
+to_email = st.text_input("Enter your email address to receive reports:")
+data_window = st.number_input("Enter the data window size (number of data points):", min_value=50, max_value=500, value=100, step=10)
+time_between_predictions = st.number_input("Time interval between predictions (in seconds):", min_value=0.1, max_value=60.0, value=10.0, step=0.1)
+
+if not to_email:
+    st.warning("Please enter your email address to receive the volatility reports.")
+    st.stop()
+
+chart_placeholder = st.empty()
+progress_bar = st.progress(0)
 
 # URL du WebSocket Deribit (environnement de test ou production)
 DERIBIT_WS_URL = "wss://test.deribit.com/ws/api/v2"  # Remplacer par 'wss://www.deribit.com/ws/api/v2' pour la production
@@ -154,7 +164,7 @@ def envoyer_email_rapport_volatilites(volatility_data):
     # Détails de l'email
     email_expediteur = FROMEMAIL
     mot_de_passe = EMAILPASSWORD
-    destinataire_email = TOEMAIL
+    destinataire_email = to_email
     serveur_smtp = "smtp.gmail.com"  # Remplace par le serveur SMTP approprié
     port_smtp = 587  # Port SMTP (587 pour TLS, ou 465 pour SSL)
 
