@@ -16,11 +16,12 @@ import matplotlib.pyplot as plt
 import plotly.graph_objs as go
 
 
+#Configuration de la page Streamlit
 st.set_page_config(
     page_title="Volatility Analysis BTC-PERPETUAL",  # Titre de la page
     page_icon="📊",  # Icône de la page (emoji ou fichier image)
     layout="wide",  # Largeur de la page ('centered' ou 'wide')
-    initial_sidebar_state="expanded",  # État initial de la barre latérale ('collapsed' ou 'expanded')
+    initial_sidebar_state="expanded",  # État initial de la barre latérale ('collapsed' ou 'expanded'),
     menu_items={
         'Get Help': 'https://www.example.com/help',  # Lien vers la page d'aide
         'Report a bug': 'https://www.example.com/bug',  # Lien vers la page de rapport de bug
@@ -28,23 +29,50 @@ st.set_page_config(
     }
 )
 
-st.sidebar.title("Select Stock")
-selected_stock = st.sidebar.selectbox(
-    "Choose the stock or asset:",
-    ["BTC-PERPETUAL", "ETH-PERPETUAL", "AAPL", "GOOG", "AMZN"]
+# Barre latérale pour la sélection du stock/actif
+st.sidebar.title("Volatility Analysis Settings")
+
+# Définir les options par catégorie
+crypto_options = ["BTC-PERPETUAL", "ETH-PERPETUAL", "BTC-USD", "ETH-USD"]
+commodity_options = ["GOLD", "SILVER", "OIL"]
+stock_options = ["AAPL", "GOOG", "AMZN", "MSFT", "TSLA", "NFLX", "FB"]
+etf_options = ["SPY", "DIA", "QQQ"]
+forex_options = ["EURUSD", "GBPUSD", "USDJPY"]
+volatility_index = ["VIX"]
+
+# Combiner les options avec un préfixe de catégorie pour créer des "groupes"
+all_options = (
+    [f"Cryptos: {option}" for option in crypto_options] +
+    [f"Commodities: {option}" for option in commodity_options] +
+    [f"Stocks: {option}" for option in stock_options] +
+    [f"ETFs: {option}" for option in etf_options] +
+    [f"Forex: {option}" for option in forex_options] +
+    [f"Volatility Index: {option}" for option in volatility_index]
 )
 
-st.title(f"Real-time volatility (EWMA) for {selected_stock}")
+# Sélectionner l'option dans le selectbox
+selected_option = st.sidebar.selectbox(
+    "Choose the stock or asset:",
+    all_options
+)
 
+# Extraire l'actif sélectionné sans le préfixe de la catégorie
+selected_stock = selected_option.split(": ")[1]
+
+# Champs de saisie pour l'email, la fenêtre de données, et l'intervalle de prédiction dans la sidebar
+to_email = st.sidebar.text_input("Enter your email address to receive reports:")
+data_window = st.sidebar.number_input("Enter the data window size (number of data points):", min_value=50, max_value=500, value=100, step=10)
+time_between_predictions = st.sidebar.number_input("Time interval between predictions (in seconds):", min_value=0.1, max_value=60.0, value=10.0, step=0.1)
+
+# Titre et description de l'application
+st.title(f"Real-time volatility (EWMA) for {selected_stock}")
 
 st.write(f"This Streamlit application enables you to track the volatility of the {selected_stock} contract in real time, calculated instantly from market data transmitted via WebSocket. An interactive graph continuously illustrates changes in the volatility of this asset. When 100 real-time estimates are collected, a full report is automatically sent by e-mail.")
 
-
+# Placeholder pour le graphique
 chart_placeholder = st.empty()
 
-to_email = st.text_input("Enter your email address to receive reports:")
-data_window = st.number_input("Enter the data window size (number of data points):", min_value=50, max_value=500, value=100, step=10)
-time_between_predictions = st.number_input("Time interval between predictions (in seconds):", min_value=0.1, max_value=60.0, value=10.0, step=0.1)
+
 
 if not to_email:
     st.warning("Please enter your email address to receive the volatility reports.")
