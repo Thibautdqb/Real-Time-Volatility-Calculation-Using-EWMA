@@ -96,8 +96,8 @@ def on_open(ws):
         "method": "public/auth",
         "params": {
             "grant_type": "client_credentials",  # Le type de connexion à utiliser
-            "client_id": API_KEY,
-            "client_secret": API_SECRET
+            "client_id": st.secrets["api_credentials"]["API_KEY"],
+            "client_secret": st.secrets["api_credentials"]["API_SECRET"]
         }
     }
 
@@ -162,8 +162,8 @@ def envoyer_email_rapport_volatilites(volatility_data):
     Envoie un email contenant les 100 derniers indices de volatilité avec leur timestamp.
     """
     # Détails de l'email
-    email_expediteur = FROMEMAIL
-    mot_de_passe = EMAILPASSWORD
+    email_expediteur = st.secrets["email_credentials"]["FROMEMAIL"]
+    mot_de_passe = st.secrets["email_credentials"]["EMAILPASSWORD"]
     destinataire_email = to_email
     serveur_smtp = "smtp.gmail.com"  # Remplace par le serveur SMTP approprié
     port_smtp = 587  # Port SMTP (587 pour TLS, ou 465 pour SSL)
