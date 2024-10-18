@@ -1,7 +1,6 @@
 import websocket
 import json
 import os
-from config import API_KEY, API_SECRET , FROMEMAIL, EMAILPASSWORD
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
