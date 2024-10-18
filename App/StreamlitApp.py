@@ -27,9 +27,12 @@ st.set_page_config(
         'About': "# Analyse en temps réel de la volatilité du contrat BTC-PERPETUAL\nCette application analyse la volatilité du contrat perpétuel Bitcoin en temps réel à l'aide du modèle EWMA."  # Texte pour la section "À propos"
     }
 )
-st.title("Real-time volatility (EWMA)")
 
-st.write("This Streamlit application enables you to track the volatility of the BTC-PERPETUAL perpetual contract in real time, calculated instantly from market data transmitted via WebSocket. An interactive graph continuously illustrates changes in the volatility of this asset. When 100 real-time estimates are collected, a full report is automatically sent by e-mail.")
+
+st.title(f"Real-time volatility (EWMA) for {selected_stock}")
+
+st.write(f"This Streamlit application enables you to track the volatility of the {selected_stock} contract in real time, calculated instantly from market data transmitted via WebSocket. An interactive graph continuously illustrates changes in the volatility of this asset. When 100 real-time estimates are collected, a full report is automatically sent by e-mail.")
+
 
 chart_placeholder = st.empty()
 
@@ -84,17 +87,18 @@ def update_chart():
         chart_placeholder.plotly_chart(fig)
 
 
+
 # Fonction appelée à l'ouverture de la connexion WebSocket
 def on_open(ws):
     print("Connexion ouverte")
-
+    
     # Message d'authentification via API
     auth_message = {
         "jsonrpc": "2.0",
         "id": 9929,
         "method": "public/auth",
         "params": {
-            "grant_type": "client_credentials",  # Le type de connexion à utiliser
+            "grant_type": "client_credentials",  
             "client_id": st.secrets["api_credentials"]["API_KEY"],
             "client_secret": st.secrets["api_credentials"]["API_SECRET"]
         }
@@ -102,6 +106,22 @@ def on_open(ws):
 
     ws.send(json.dumps(auth_message))
     print("Message d'authentification envoyé")
+
+    # Souscrire au canal de l'actif sélectionné
+    channel_ticker = f"ticker.{selected_stock}.raw"
+    if channel_ticker not in subscribed_channels:
+        subscribe_message = {
+            "jsonrpc": "2.0",
+            "method": "public/subscribe",
+            "params": {
+                "channels": [channel_ticker]
+            },
+            "id": 43
+        }
+        ws.send(json.dumps(subscribe_message))
+        subscribed_channels.add(channel_ticker)
+        print(f"Souscrit au canal {channel_ticker}")
+
 
 
 
