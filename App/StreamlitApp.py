@@ -28,14 +28,14 @@ st.set_page_config(
     }
 )
 
-
-st.title(f"Real-time volatility (EWMA) for {selected_stock}")
-
 st.sidebar.title("Select Stock")
 selected_stock = st.sidebar.selectbox(
     "Choose the stock or asset:",
     ["BTC-PERPETUAL", "ETH-PERPETUAL", "AAPL", "GOOG", "AMZN"]
 )
+
+st.title(f"Real-time volatility (EWMA) for {selected_stock}")
+
 
 st.write(f"This Streamlit application enables you to track the volatility of the {selected_stock} contract in real time, calculated instantly from market data transmitted via WebSocket. An interactive graph continuously illustrates changes in the volatility of this asset. When 100 real-time estimates are collected, a full report is automatically sent by e-mail.")
 
