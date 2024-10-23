@@ -102,7 +102,6 @@ volatility_data = {asset: [] for asset in selected_assets}  # Un dictionnaire po
 collecte_terminee = False  # Variable pour suivre l'état de la collecte
 last_volatility_calc_time = time.time() - 3 
 progress_bar = st.progress(0)  # Valeur initiale de 0%
-volatility_data = []
 
 
 
