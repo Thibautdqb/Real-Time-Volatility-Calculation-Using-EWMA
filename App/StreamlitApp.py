@@ -97,26 +97,30 @@ last_volatility_calc_time = time.time() - 3
 
 
 def update_chart():
+    # Créer une nouvelle figure pour afficher les actifs sélectionnés
     fig = go.Figure()
 
-    # Parcourir tous les actifs sélectionnés et vérifier s'ils ont des données de volatilité
+    # Parcourir tous les actifs sélectionnés et vérifier qu'ils ont des données à afficher
     for asset in selected_assets:
-        if len(volatility_data[asset]) > 0:  # Assurer qu'il y a des données pour cet actif
+        if len(volatility_data[asset]) > 0:
             df = pd.DataFrame(volatility_data[asset])
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
 
-            # Ajouter une trace spécifique pour chaque actif
+            # Ajouter une nouvelle trace pour chaque actif
             fig.add_trace(go.Scatter(
                 x=df['timestamp'],
                 y=df['volatility'],
                 mode='lines',
                 name=f'Volatility (EWMA) - {asset}'
             ))
+        else:
+            # Si pas de données pour cet actif, afficher un avertissement dans la console
+            print(f"Aucune donnée disponible pour {asset} à afficher dans le graphique.")
 
-    # Si aucune donnée n'est disponible, ne pas afficher de graphique
-    if fig.data:
+    # Vérification : S'il y a au moins une trace ajoutée au graphique
+    if len(fig.data) > 0:
         fig.update_layout(
-            title="Estimated volatility (EWMA) in real time",
+            title="Estimated volatility (EWMA) in real time for selected assets",
             xaxis_title="Time",
             yaxis_title="Volatility",
             template="plotly_dark"
@@ -124,7 +128,8 @@ def update_chart():
         chart_placeholder.plotly_chart(fig)
     else:
         # Si aucune donnée n'est disponible, afficher un message dans le placeholder
-        chart_placeholder.write("No data available to display.")
+        chart_placeholder.write("No data available to display for the selected assets.")
+
 
 
 
