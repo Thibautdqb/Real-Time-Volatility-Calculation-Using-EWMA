@@ -131,8 +131,7 @@ def update_chart():
 
 
 
-# Fonction pour appliquer le modèle EWMA
-def appliquer_modele_ewma(asset, data_list[asset] , lambda_factor=0.10):
+def appliquer_modele_ewma(asset, data, lambda_factor=0.10):
     global volatility_data
 
     prices = pd.Series([item['mark_price'] for item in data])
@@ -155,10 +154,11 @@ def appliquer_modele_ewma(asset, data_list[asset] , lambda_factor=0.10):
     timestamp = time.time()
     volatility_data[asset].append({'timestamp': timestamp, 'volatility': volatility})
 
-    if len(volatility_data[asset]) >= 10:
+    if len(volatility_data[asset]) >= 100:
         envoyer_email_rapport_volatilites(asset, volatility_data[asset])        
         volatility_data[asset].clear()
     return volatility
+
 
 
 
