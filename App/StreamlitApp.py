@@ -16,56 +16,58 @@ import matplotlib.pyplot as plt
 import plotly.graph_objs as go
 
 
+
+
+
 # Configuration de la page Streamlit
 st.set_page_config(
-    page_title="Volatility Analysis BTC-PERPETUAL",  # Titre de la page
+    page_title="Volatility Analysis Multi-Assets",  # Titre de la page
     page_icon="📊",  # Icône de la page (emoji ou fichier image)
     layout="wide",  # Largeur de la page ('centered' ou 'wide')
     initial_sidebar_state="expanded",  # État initial de la barre latérale ('collapsed' ou 'expanded')
     menu_items={
         'Get Help': 'https://www.example.com/help',  # Lien vers la page d'aide
         'Report a bug': 'https://www.example.com/bug',  # Lien vers la page de rapport de bug
-        'About': "# Analyse en temps réel de la volatilité du contrat BTC-PERPETUAL\nCette application analyse la volatilité du contrat perpétuel Bitcoin en temps réel à l'aide du modèle EWMA."  # Texte pour la section "À propos"
+        'About': "# Analyse en temps réel de la volatilité de plusieurs actifs\nCette application analyse la volatilité de plusieurs actifs en temps réel à l'aide du modèle EWMA."  # Texte pour la section "À propos"
     }
 )
 
 # Barre latérale pour la sélection du stock/actif
 st.sidebar.title("Volatility Analysis Settings")
 
-# Première étape : Sélection du type de produit financier
+# Sélection de plusieurs actifs pour comparaison
 product_type = st.sidebar.selectbox(
     "Choose the type of financial product:",
     ["Cryptos", "Commodities", "Stocks", "ETFs", "Forex", "Volatility Index"]
 )
 
-# Deuxième étape : Sélection de l'actif spécifique en fonction du type choisi
 if product_type == "Cryptos":
-    selected_asset = st.sidebar.selectbox(
-        "Choose the cryptocurrency:",
+    selected_assets = st.sidebar.multiselect(
+        "Choose the cryptocurrencies:",
         ["BTC-PERPETUAL", "ETH-PERPETUAL", "BTC-USD", "ETH-USD"]
     )
 elif product_type == "Commodities":
-    selected_asset = st.sidebar.selectbox(
-        "Choose the commodity:",
+    selected_assets = st.sidebar.multiselect(
+        "Choose the commodities:",
         ["GOLD", "SILVER", "OIL"]
     )
 elif product_type == "Stocks":
-    selected_asset = st.sidebar.selectbox(
-        "Choose the stock:",
+    selected_assets = st.sidebar.multiselect(
+        "Choose the stocks:",
         ["AAPL", "GOOG", "AMZN", "MSFT", "TSLA", "NFLX", "FB"]
     )
 elif product_type == "ETFs":
-    selected_asset = st.sidebar.selectbox(
-        "Choose the ETF:",
+    selected_assets = st.sidebar.multiselect(
+        "Choose the ETFs:",
         ["SPY", "DIA", "QQQ"]
     )
 elif product_type == "Forex":
-    selected_asset = st.sidebar.selectbox(
-        "Choose the forex pair:",
+    selected_assets = st.sidebar.multiselect(
+        "Choose the forex pairs:",
         ["EURUSD", "GBPUSD", "USDJPY"]
     )
 elif product_type == "Volatility Index":
-    selected_asset = st.sidebar.selectbox(
+    selected_assets = st.sidebar.multiselect(
         "Choose the volatility index:",
         ["VIX"]
     )
@@ -76,34 +78,29 @@ data_window = st.sidebar.number_input("Enter the data window size (number of dat
 time_between_predictions = st.sidebar.number_input("Time interval between predictions (in seconds):", min_value=0.1, max_value=60.0, value=10.0, step=0.1)
 
 # Titre et description de l'application
-st.title(f"Real-time volatility (EWMA) for {selected_asset}")
+st.title(f"Real-time volatility (EWMA) for selected assets")
 
-st.write(f"This Streamlit application enables you to track the volatility of the {selected_asset} contract in real time, calculated instantly from market data transmitted via WebSocket. An interactive graph continuously illustrates changes in the volatility of this asset. When 100 real-time estimates are collected, a full report is automatically sent by e-mail.")
+st.write(f"This Streamlit application enables you to track the volatility of multiple assets in real time, calculated instantly from market data transmitted via WebSocket. An interactive graph continuously illustrates changes in the volatility of these assets. When 100 real-time estimates are collected, a full report is automatically sent by e-mail.")
 
 # Placeholder pour le graphique
 chart_placeholder = st.empty()
-
-
 
 if not to_email:
     st.warning("Please enter your email address to receive the volatility reports.")
     st.stop()
 
-chart_placeholder = st.empty()
 progress_bar = st.progress(0)
 
 # URL du WebSocket Deribit (environnement de test ou production)
 DERIBIT_WS_URL = "wss://test.deribit.com/ws/api/v2"  # Remplacer par 'wss://www.deribit.com/ws/api/v2' pour la production
 
-# Garde une trace des canaux auxquels tu es abonné
+# Variables pour stocker les données par actif
 subscribed_channels = set()
-
-# Liste pour stocker les données
-data_list = []
+data_list = {asset: [] for asset in selected_assets}  # Un dictionnaire pour stocker les données de chaque actif
+volatility_data = {asset: [] for asset in selected_assets}  # Un dictionnaire pour stocker la volatilité de chaque actif
 
 collecte_terminee = False  # Variable pour suivre l'état de la collecte
 last_volatility_calc_time = time.time() - 3 
-
 progress_bar = st.progress(0)  # Valeur initiale de 0%
 volatility_data = []
 
@@ -113,24 +110,22 @@ volatility_data = []
 # Fonction pour mettre à jour le graphique dans Streamlit
 # Fonction pour mettre à jour le graphique dans Streamlit
 def update_chart():
-    global volatility_data
-
-    if len(volatility_data) > 0:
-        df = pd.DataFrame(volatility_data)
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
-
-        # Graphique interactif avec Plotly
+    if any(len(volatility_data[asset]) > 0 for asset in selected_assets):
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df['timestamp'], y=df['volatility'], mode='lines', name='Volatilité (EWMA)'))
+
+        for asset in selected_assets:
+            df = pd.DataFrame(volatility_data[asset])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
+            fig.add_trace(go.Scatter(x=df['timestamp'], y=df['volatility'], mode='lines', name=f'Volatility (EWMA) - {asset}'))
+
         fig.update_layout(
             title="Estimated volatility (EWMA) in real time",
-            xaxis_title="Temps",
-            yaxis_title="Volatilité",
+            xaxis_title="Time",
+            yaxis_title="Volatility",
             template="plotly_dark"
         )
 
         chart_placeholder.plotly_chart(fig)
-
 
 
 # Fonction appelée à l'ouverture de la connexion WebSocket
@@ -170,53 +165,33 @@ def on_open(ws):
 
 
 
+# Fonction pour appliquer le modèle EWMA
+def appliquer_modele_ewma(asset, data, lambda_factor=0.10):
+    global volatility_data
 
-def appliquer_modele_ewma(data_list, lambda_factor=0.10):
-    """
-    Applique le modèle EWMA pour estimer la volatilité en utilisant toutes les données disponibles.
-    
-    :param data_list: Liste des prix historiques (par exemple, mark_price)
-    :param lambda_factor: Facteur de lissage pour EWMA
-    :return: Volatilité estimée
-    """
-    global volatility_data  # Utiliser la variable globale pour accumuler les volatilités
+    prices = pd.Series([item['mark_price'] for item in data])
 
-    # Extraire les prix de 'mark_price' dans data_list
-    prices = pd.Series([item['mark_price'] for item in data_list])
-
-    # Vérifier s'il y a suffisamment de données pour calculer la volatilité
     if len(prices) < 100:
-        print("Pas assez de données pour calculer la volatilité.")
         return None
 
-    # Calculer les rendements logarithmiques sur toutes les données disponibles
     returns = np.log(prices / prices.shift(1)).dropna()
 
-    # Vérifier si tous les rendements ne sont pas égaux à 0
     if returns.var() == 0:
-        print("Les rendements sont constants, le modèle EWMA ne peut pas être appliqué.")
         return None
 
-    # Initialiser la variance avec la variance empirique
     variance = returns.var()
 
-    # Appliquer le modèle EWMA pour calculer la volatilité
     for r in returns:
         variance = lambda_factor * variance + (1 - lambda_factor) * (r ** 2)
 
-    # La volatilité est la racine carrée de la variance
     volatility = np.sqrt(variance)
-    
-    print(f"Estimated volatility (EWMA) : {volatility}")
-    
-    # Enregistrer la volatilité avec un timestamp
-    timestamp = time.time()
-    volatility_data.append({'timestamp': timestamp, 'volatility': volatility})
 
-    # Limiter le tableau à 100 dernières valeurs, puis envoyer un e-mail
-    if len(volatility_data) >= 100:
-        envoyer_email_rapport_volatilites(volatility_data)        
-        volatility_data.clear()  
+    timestamp = time.time()
+    volatility_data[asset].append({'timestamp': timestamp, 'volatility': volatility})
+
+    if len(volatility_data[asset]) >= 100:
+        envoyer_email_rapport_volatilites(asset, volatility_data[asset])        
+        volatility_data[asset].clear()
     return volatility
 
 
@@ -321,32 +296,29 @@ def on_message(ws, message):
             subscribed_channels.add(channel_ticker)
             print(f"Souscrit au canal {channel_ticker}")
 
-    # Gestion des messages de données (prix, etc.)
-    if 'params' in response and 'data' in response['params']:
+if 'params' in response and 'data' in response['params']:
         data = response['params']['data']
-        timestamp = time.time()  # Récupérer l'horodatage actuel
-        
-        if 'mark_price' in data:
-            print(f"Dernier prix : {data['mark_price']}")
+        for asset in selected_assets:
+            if 'mark_price' in data:
+                data_list[asset].append({
+                    'timestamp': time.time(),
+                    'mark_price': data['mark_price']
+                })
 
-            # Ajouter les données à la liste avec une fenêtre roulante de taille fixe
-            data_list.append({
-                'timestamp': timestamp,
-                'mark_price': data['mark_price']
-            })
-            progress_percentage = min(100, len(data_list))
-            progress_bar.progress(progress_percentage)
-            # Maintenir la taille de la fenêtre à 100 éléments
-            if len(data_list) > 100:
-                data_list.pop(0)  # Retirer l'élément le plus ancien
-            
-            # Vérifier si 10  secondes se sont écoulées depuis le dernier calcul de volatilité
-            if time.time() - last_volatility_calc_time >= 0.1:
-                appliquer_modele_ewma(data_list)  # Calculer la volatilité
-                update_chart()
+                if len(data_list[asset]) > data_window:
+                    data_list[asset].pop(0)
+
+                if time.time() - last_volatility_calc_time >= time_between_predictions:
+                    appliquer_modele_ewma(asset, data_list[asset])
+                    update_chart()
+                    last_volatility_calc_time = time.time()
 
 
-                last_volatility_calc_time = time.time()  # Réinitialiser le compteur de temps
+
+
+
+
+
 
 
 
