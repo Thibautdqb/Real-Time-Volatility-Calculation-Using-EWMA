@@ -96,26 +96,36 @@ collecte_terminee = False
 last_volatility_calc_time = time.time() - 3 
 
 
-# Fonction pour mettre à jour le graphique dans Streamlit
 def update_chart():
-    if any(len(volatility_data[asset]) > 0 for asset in selected_assets):
-        fig = go.Figure()
+    fig = go.Figure()
 
-        for asset in selected_assets:
-            if len(volatility_data[asset]) == 0:
-                continue
+    # Parcourir tous les actifs sélectionnés et vérifier s'ils ont des données de volatilité
+    for asset in selected_assets:
+        if len(volatility_data[asset]) > 0:  # Assurer qu'il y a des données pour cet actif
             df = pd.DataFrame(volatility_data[asset])
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
-            fig.add_trace(go.Scatter(x=df['timestamp'], y=df['volatility'], mode='lines', name=f'Volatility (EWMA) - {asset}'))
 
+            # Ajouter une trace spécifique pour chaque actif
+            fig.add_trace(go.Scatter(
+                x=df['timestamp'],
+                y=df['volatility'],
+                mode='lines',
+                name=f'Volatility (EWMA) - {asset}'
+            ))
+
+    # Si aucune donnée n'est disponible, ne pas afficher de graphique
+    if fig.data:
         fig.update_layout(
             title="Estimated volatility (EWMA) in real time",
             xaxis_title="Time",
             yaxis_title="Volatility",
             template="plotly_dark"
         )
-
         chart_placeholder.plotly_chart(fig)
+    else:
+        # Si aucune donnée n'est disponible, afficher un message dans le placeholder
+        chart_placeholder.write("No data available to display.")
+
 
 
 def appliquer_modele_ewma(asset, data, lambda_factor=0.10):
