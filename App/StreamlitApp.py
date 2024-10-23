@@ -128,39 +128,6 @@ def update_chart():
         chart_placeholder.plotly_chart(fig)
 
 
-# Fonction appelée à l'ouverture de la connexion WebSocket
-def on_open(ws):
-    print("Connexion ouverte")
-    
-    # Message d'authentification via API
-    auth_message = {
-        "jsonrpc": "2.0",
-        "id": 9929,
-        "method": "public/auth",
-        "params": {
-            "grant_type": "client_credentials",  
-            "client_id": st.secrets["api_credentials"]["API_KEY"],
-            "client_secret": st.secrets["api_credentials"]["API_SECRET"]
-        }
-    }
-
-    ws.send(json.dumps(auth_message))
-    print("Message d'authentification envoyé")
-
-    # Souscrire au canal de l'actif sélectionné
-    channel_ticker = f"ticker.{selected.asset}.raw"
-    if channel_ticker not in subscribed_channels:
-        subscribe_message = {
-            "jsonrpc": "2.0",
-            "method": "public/subscribe",
-            "params": {
-                "channels": [channel_ticker]
-            },
-            "id": 43
-        }
-        ws.send(json.dumps(subscribe_message))
-        subscribed_channels.add(channel_ticker)
-        print(f"Souscrit au canal {channel_ticker}")
 
 
 
@@ -265,11 +232,6 @@ def envoyer_email_rapport_volatilites(volatility_data):
         print(f"Erreur lors de l'envoi de l'email : {e}")
 
 
-
-
-
-
-# Fonction appelée lorsqu'un message est reçu
 def on_message(ws, message):
     global data_list, collecte_terminee, subscribed_channels, last_volatility_calc_time
 
@@ -277,26 +239,28 @@ def on_message(ws, message):
     print("Message reçu :")
     print(json.dumps(response, indent=4))
 
-    # Si l'authentification est réussie, souscrire aux canaux de prix en temps réel
+    # Si l'authentification est réussie, souscrire aux canaux de prix en temps réel une seule fois
     if 'result' in response and 'id' in response and response['id'] == 9929:
         print("Authentification réussie, souscription aux canaux...")
 
-        # Souscription au ticker pour recevoir les prix en temps réel
-        channel_ticker = "ticker.BTC-PERPETUAL.raw"
-        if channel_ticker not in subscribed_channels:
-            subscribe_message = {
-                "jsonrpc": "2.0",
-                "method": "public/subscribe",
-                "params": {
-                    "channels": [channel_ticker]
-                },
-                "id": 43
-            }
-            ws.send(json.dumps(subscribe_message))
-            subscribed_channels.add(channel_ticker)
-            print(f"Souscrit au canal {channel_ticker}")
+        # Souscription aux canaux des actifs sélectionnés
+        for asset in selected_assets:
+            channel_ticker = f"ticker.{asset}.raw"
+            if channel_ticker not in subscribed_channels:
+                subscribe_message = {
+                    "jsonrpc": "2.0",
+                    "method": "public/subscribe",
+                    "params": {
+                        "channels": [channel_ticker]
+                    },
+                    "id": 43
+                }
+                ws.send(json.dumps(subscribe_message))
+                subscribed_channels.add(channel_ticker)
+                print(f"Souscrit au canal {channel_ticker}")
 
-if 'params' in response and 'data' in response['params']:
+    # Gestion des données de prix reçues (pour traiter les messages de données)
+    if 'params' in response and 'data' in response['params']:
         data = response['params']['data']
         for asset in selected_assets:
             if 'mark_price' in data:
@@ -305,17 +269,15 @@ if 'params' in response and 'data' in response['params']:
                     'mark_price': data['mark_price']
                 })
 
+                # Limiter la taille de la fenêtre de données
                 if len(data_list[asset]) > data_window:
                     data_list[asset].pop(0)
 
+                # Calculer la volatilité et mettre à jour le graphique si l'intervalle est atteint
                 if time.time() - last_volatility_calc_time >= time_between_predictions:
                     appliquer_modele_ewma(asset, data_list[asset])
                     update_chart()
                     last_volatility_calc_time = time.time()
-
-
-
-
 
 
 
