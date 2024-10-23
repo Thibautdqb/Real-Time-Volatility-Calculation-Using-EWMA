@@ -1,34 +1,27 @@
 import websocket
 import json
-import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import ssl
- # Importer les clés depuis config.py
 import time
 import pandas as pd
 from arch import arch_model
 import numpy as np
-import time
 import streamlit as st 
 import matplotlib.pyplot as plt
 import plotly.graph_objs as go
 
-
-
-
-
 # Configuration de la page Streamlit
 st.set_page_config(
-    page_title="Volatility Analysis Multi-Assets",  # Titre de la page
-    page_icon="📊",  # Icône de la page (emoji ou fichier image)
-    layout="wide",  # Largeur de la page ('centered' ou 'wide')
-    initial_sidebar_state="expanded",  # État initial de la barre latérale ('collapsed' ou 'expanded')
+    page_title="Volatility Analysis Multi-Assets",  
+    page_icon="📊",  
+    layout="wide",  
+    initial_sidebar_state="expanded",  
     menu_items={
-        'Get Help': 'https://www.example.com/help',  # Lien vers la page d'aide
-        'Report a bug': 'https://www.example.com/bug',  # Lien vers la page de rapport de bug
-        'About': "# Analyse en temps réel de la volatilité de plusieurs actifs\nCette application analyse la volatilité de plusieurs actifs en temps réel à l'aide du modèle EWMA."  # Texte pour la section "À propos"
+        'Get Help': 'https://www.example.com/help',  
+        'Report a bug': 'https://www.example.com/bug',  
+        'About': "# Analyse en temps réel de la volatilité de plusieurs actifs\nCette application analyse la volatilité de plusieurs actifs en temps réel à l'aide du modèle EWMA."
     }
 )
 
@@ -92,27 +85,25 @@ if not to_email:
 progress_bar = st.progress(0)
 
 # URL du WebSocket Deribit (environnement de test ou production)
-DERIBIT_WS_URL = "wss://test.deribit.com/ws/api/v2"  # Remplacer par 'wss://www.deribit.com/ws/api/v2' pour la production
+DERIBIT_WS_URL = "wss://test.deribit.com/ws/api/v2"
 
 # Variables pour stocker les données par actif
 subscribed_channels = set()
-data_list = {asset: [] for asset in selected_assets}  # Un dictionnaire pour stocker les données de chaque actif
-volatility_data = {asset: [] for asset in selected_assets}  # Un dictionnaire pour stocker la volatilité de chaque actif
+data_list = {asset: [] for asset in selected_assets}  
+volatility_data = {asset: [] for asset in selected_assets}  
 
-collecte_terminee = False  # Variable pour suivre l'état de la collecte
+collecte_terminee = False  
 last_volatility_calc_time = time.time() - 3 
-progress_bar = st.progress(0)  # Valeur initiale de 0%
 
 
-
-
-# Fonction pour mettre à jour le graphique dans Streamlit
 # Fonction pour mettre à jour le graphique dans Streamlit
 def update_chart():
     if any(len(volatility_data[asset]) > 0 for asset in selected_assets):
         fig = go.Figure()
 
         for asset in selected_assets:
+            if len(volatility_data[asset]) == 0:
+                continue
             df = pd.DataFrame(volatility_data[asset])
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
             fig.add_trace(go.Scatter(x=df['timestamp'], y=df['volatility'], mode='lines', name=f'Volatility (EWMA) - {asset}'))
@@ -125,10 +116,6 @@ def update_chart():
         )
 
         chart_placeholder.plotly_chart(fig)
-
-
-
-
 
 
 def appliquer_modele_ewma(asset, data, lambda_factor=0.10):
@@ -155,31 +142,23 @@ def appliquer_modele_ewma(asset, data, lambda_factor=0.10):
     volatility_data[asset].append({'timestamp': timestamp, 'volatility': volatility})
 
     if len(volatility_data[asset]) >= 100:
-        envoyer_email_rapport_volatilites(asset, volatility_data[asset])        
+        envoyer_email_rapport_volatilites(volatility_data[asset])        
         volatility_data[asset].clear()
     return volatility
 
 
-
-
 def envoyer_email_rapport_volatilites(volatility_data):
-    """
-    Envoie un email contenant les 100 derniers indices de volatilité avec leur timestamp.
-    """
-    # Détails de l'email
     email_expediteur = st.secrets["email_credentials"]["FROMEMAIL"]
     mot_de_passe = st.secrets["email_credentials"]["EMAILPASSWORD"]
     destinataire_email = to_email
-    serveur_smtp = "smtp.gmail.com"  # Remplace par le serveur SMTP approprié
-    port_smtp = 587  # Port SMTP (587 pour TLS, ou 465 pour SSL)
+    serveur_smtp = "smtp.gmail.com"
+    port_smtp = 587  
 
-    # Création du message email
     msg = MIMEMultipart("alternative")
     msg['From'] = email_expediteur
     msg['To'] = destinataire_email
     msg['Subject'] = "Rapport des 100 derniers indices de volatilité - Modèle EWMA"
 
-    # Créer le corps du message avec un style HTML
     message_html = """
     <html>
         <body>
@@ -195,7 +174,6 @@ def envoyer_email_rapport_volatilites(volatility_data):
                 <tbody>
     """
     
-    # Remplir le tableau avec les données de volatilité
     for entry in volatility_data:
         time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(entry['timestamp']))
         volatilite_str = f"{entry['volatility']:.6f}"
@@ -206,7 +184,6 @@ def envoyer_email_rapport_volatilites(volatility_data):
                     </tr>
         """
     
-    # Fermer le tableau et l'email HTML
     message_html += """
                 </tbody>
             </table>
@@ -216,10 +193,8 @@ def envoyer_email_rapport_volatilites(volatility_data):
     </html>
     """
     
-    # Attacher le contenu HTML au message
     msg.attach(MIMEText(message_html, "html"))
 
-    # Connexion au serveur SMTP et envoi de l'email
     try:
         context = ssl.create_default_context()
         with smtplib.SMTP(serveur_smtp, port_smtp) as serveur:
@@ -238,11 +213,9 @@ def on_message(ws, message):
     print("Message reçu :")
     print(json.dumps(response, indent=4))
 
-    # Si l'authentification est réussie, souscrire aux canaux de prix en temps réel une seule fois
     if 'result' in response and 'id' in response and response['id'] == 9929:
         print("Authentification réussie, souscription aux canaux...")
 
-        # Souscription aux canaux des actifs sélectionnés
         for asset in selected_assets:
             channel_ticker = f"ticker.{asset}.raw"
             if channel_ticker not in subscribed_channels:
@@ -258,7 +231,6 @@ def on_message(ws, message):
                 subscribed_channels.add(channel_ticker)
                 print(f"Souscrit au canal {channel_ticker}")
 
-    # Gestion des données de prix reçues (pour traiter les messages de données)
     if 'params' in response and 'data' in response['params']:
         data = response['params']['data']
         for asset in selected_assets:
@@ -268,22 +240,18 @@ def on_message(ws, message):
                     'mark_price': data['mark_price']
                 })
 
-                # Limiter la taille de la fenêtre de données
                 if len(data_list[asset]) > data_window:
                     data_list[asset].pop(0)
 
-                # Calculer la volatilité et mettre à jour le graphique si l'intervalle est atteint
                 if time.time() - last_volatility_calc_time >= time_between_predictions:
                     appliquer_modele_ewma(asset, data_list[asset])
                     update_chart()
                     last_volatility_calc_time = time.time()
 
 
-
 def on_open(ws):
     print("Connexion ouverte")
     
-    # Message d'authentification via API
     auth_message = {
         "jsonrpc": "2.0",
         "id": 9929,
@@ -299,19 +267,14 @@ def on_open(ws):
     print("Message d'authentification envoyé")
 
 
-
-
-# Fonction appelée lorsqu'une erreur se produit
 def on_error(ws, error):
     print("Erreur : ", error)
 
-    # Gestion de l'erreur too_many_requests
     if "too_many_requests" in str(error):
         print("Trop de requêtes envoyées. Attente de 5 secondes avant de réessayer...")
-        time.sleep(5)  # Attente de 5 secondes avant de réessayer
+        time.sleep(5)
 
 
-# Fonction appelée à la fermeture de la connexion WebSocket
 def on_close(ws, close_status_code, close_msg):
     print(f"Connexion fermée : Code {close_status_code}, Message : {close_msg}")
     print("Tentative de reconnexion dans 5 secondes...")
@@ -320,12 +283,9 @@ def on_close(ws, close_status_code, close_msg):
 
 
 if __name__ == "__main__":
-    # Création de l'instance WebSocketApp et passage des callbacks
     ws = websocket.WebSocketApp(DERIBIT_WS_URL,
                                 on_open=on_open,
                                 on_message=on_message,
                                 on_close=on_close,
                                 on_error=on_error)
-
-    # Exécution en mode "forever"
     ws.run_forever()
