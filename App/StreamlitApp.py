@@ -133,7 +133,6 @@ def update_chart():
 
 
 
-# Fonction appelée à l'ouverture de la connexion WebSocket
 def on_open(ws):
     print("Connexion ouverte")
     
@@ -151,21 +150,6 @@ def on_open(ws):
 
     ws.send(json.dumps(auth_message))
     print("Message d'authentification envoyé")
-
-    # Souscrire au canal de l'actif sélectionné
-    channel_ticker = f"ticker.{selected_asset}.raw"
-    if channel_ticker not in subscribed_channels:
-        subscribe_message = {
-            "jsonrpc": "2.0",
-            "method": "public/subscribe",
-            "params": {
-                "channels": [channel_ticker]
-            },
-            "id": 43
-        }
-        ws.send(json.dumps(subscribe_message))
-        subscribed_channels.add(channel_ticker)
-        print(f"Souscrit au canal {channel_ticker}")
 
 
 
@@ -293,8 +277,6 @@ def envoyer_email_rapport_volatilites(volatility_data):
 
 
 
-
-# Fonction appelée lorsqu'un message est reçu
 def on_message(ws, message):
     global data_list, collecte_terminee, subscribed_channels, last_volatility_calc_time
 
@@ -302,51 +284,45 @@ def on_message(ws, message):
     print("Message reçu :")
     print(json.dumps(response, indent=4))
 
-    # Si l'authentification est réussie, souscrire aux canaux de prix en temps réel
+    # Si l'authentification est réussie, souscrire aux canaux de prix en temps réel une seule fois
     if 'result' in response and 'id' in response and response['id'] == 9929:
         print("Authentification réussie, souscription aux canaux...")
 
-        # Souscription au ticker pour recevoir les prix en temps réel
-        channel_ticker = "ticker.BTC-PERPETUAL.raw"
-        if channel_ticker not in subscribed_channels:
-            subscribe_message = {
-                "jsonrpc": "2.0",
-                "method": "public/subscribe",
-                "params": {
-                    "channels": [channel_ticker]
-                },
-                "id": 43
-            }
-            ws.send(json.dumps(subscribe_message))
-            subscribed_channels.add(channel_ticker)
-            print(f"Souscrit au canal {channel_ticker}")
+        # Souscription aux canaux des actifs sélectionnés
+        for asset in selected_assets:
+            channel_ticker = f"ticker.{asset}.raw"
+            if channel_ticker not in subscribed_channels:
+                subscribe_message = {
+                    "jsonrpc": "2.0",
+                    "method": "public/subscribe",
+                    "params": {
+                        "channels": [channel_ticker]
+                    },
+                    "id": 43
+                }
+                ws.send(json.dumps(subscribe_message))
+                subscribed_channels.add(channel_ticker)
+                print(f"Souscrit au canal {channel_ticker}")
 
-    # Gestion des messages de données (prix, etc.)
+    # Gestion des données de prix reçues (pour traiter les messages de données)
     if 'params' in response and 'data' in response['params']:
         data = response['params']['data']
-        timestamp = time.time()  # Récupérer l'horodatage actuel
-        
-        if 'mark_price' in data:
-            print(f"Dernier prix : {data['mark_price']}")
+        for asset in selected_assets:
+            if 'mark_price' in data:
+                data_list[asset].append({
+                    'timestamp': time.time(),
+                    'mark_price': data['mark_price']
+                })
 
-            # Ajouter les données à la liste avec une fenêtre roulante de taille fixe
-            data_list.append({
-                'timestamp': timestamp,
-                'mark_price': data['mark_price']
-            })
-            progress_percentage = min(100, len(data_list))
-            progress_bar.progress(progress_percentage)
-            # Maintenir la taille de la fenêtre à 100 éléments
-            if len(data_list) > 100:
-                data_list.pop(0)  # Retirer l'élément le plus ancien
-            
-            # Vérifier si 10  secondes se sont écoulées depuis le dernier calcul de volatilité
-            if time.time() - last_volatility_calc_time >= 0.1:
-                appliquer_modele_ewma(data_list)  # Calculer la volatilité
-                update_chart()
+                # Limiter la taille de la fenêtre de données
+                if len(data_list[asset]) > data_window:
+                    data_list[asset].pop(0)
 
-
-                last_volatility_calc_time = time.time()  # Réinitialiser le compteur de temps
+                # Calculer la volatilité et mettre à jour le graphique si l'intervalle est atteint
+                if time.time() - last_volatility_calc_time >= time_between_predictions:
+                    appliquer_modele_ewma(asset, data_list[asset])
+                    update_chart()
+                    last_volatility_calc_time = time.time()
 
 
 
