@@ -153,7 +153,7 @@ def on_open(ws):
     print("Message d'authentification envoyé")
 
     # Souscrire au canal de l'actif sélectionné
-    channel_ticker = f"ticker.{selected_stock}.raw"
+    channel_ticker = f"ticker.{selected_asset}.raw"
     if channel_ticker not in subscribed_channels:
         subscribe_message = {
             "jsonrpc": "2.0",
