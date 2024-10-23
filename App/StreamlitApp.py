@@ -215,7 +215,6 @@ def envoyer_email_rapport_volatilites(volatility_data):
     except Exception as e:
         print(f"Erreur lors de l'envoi de l'email : {e}")
 
-
 def on_message(ws, message):
     global data_list, collecte_terminee, subscribed_channels, last_volatility_calc_time
 
@@ -223,9 +222,11 @@ def on_message(ws, message):
     print("Message reçu :")
     print(json.dumps(response, indent=4))
 
+    # Authentification réussie
     if 'result' in response and 'id' in response and response['id'] == 9929:
         print("Authentification réussie, souscription aux canaux...")
 
+        # Souscription aux canaux pour chaque actif sélectionné
         for asset in selected_assets:
             channel_ticker = f"ticker.{asset}.raw"
             if channel_ticker not in subscribed_channels:
@@ -241,22 +242,33 @@ def on_message(ws, message):
                 subscribed_channels.add(channel_ticker)
                 print(f"Souscrit au canal {channel_ticker}")
 
+    # Traitement des données reçues en temps réel
     if 'params' in response and 'data' in response['params']:
         data = response['params']['data']
+
+        # Gestion des données de prix pour chaque actif sélectionné
         for asset in selected_assets:
             if 'mark_price' in data:
+                # Ajouter les nouvelles données de prix au dictionnaire correspondant à l'actif
                 data_list[asset].append({
                     'timestamp': time.time(),
                     'mark_price': data['mark_price']
                 })
 
+                # Limiter la taille de la fenêtre de données pour l'actif (éviter les débordements)
                 if len(data_list[asset]) > data_window:
                     data_list[asset].pop(0)
 
+                # Vérification si l'intervalle de temps entre les prédictions est atteint
                 if time.time() - last_volatility_calc_time >= time_between_predictions:
+                    # Appliquer le modèle EWMA à l'actif avec les données collectées
                     appliquer_modele_ewma(asset, data_list[asset])
+                    # Mettre à jour le graphique après le calcul de la volatilité
                     update_chart()
+                    # Mettre à jour le temps de la dernière prédiction
                     last_volatility_calc_time = time.time()
+
+
 
 
 def on_open(ws):
