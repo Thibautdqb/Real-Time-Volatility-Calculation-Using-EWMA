@@ -281,6 +281,23 @@ def on_message(ws, message):
 
 
 
+def on_open(ws):
+    print("Connexion ouverte")
+    
+    # Message d'authentification via API
+    auth_message = {
+        "jsonrpc": "2.0",
+        "id": 9929,
+        "method": "public/auth",
+        "params": {
+            "grant_type": "client_credentials",  
+            "client_id": st.secrets["api_credentials"]["API_KEY"],
+            "client_secret": st.secrets["api_credentials"]["API_SECRET"]
+        }
+    }
+
+    ws.send(json.dumps(auth_message))
+    print("Message d'authentification envoyé")
 
 
 
