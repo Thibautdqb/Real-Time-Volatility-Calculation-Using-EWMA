@@ -227,7 +227,18 @@ def envoyer_email_rapport_volatilites(volatility_data):
 
 def on_message(ws, message):
     global data_list, collecte_terminee, subscribed_channels, last_volatility_calc_time
+    
+    channel_formats = {
+        "Cryptos": "ticker.{asset}.raw",
+        "Commodities": "market.{asset}.quote",   # Exemple de format pour les matières premières
+        "Stocks": "stock.{asset}.quote",         # Exemple pour les actions
+        "ETFs": "etf.{asset}.quote",             # Exemple pour les ETFs
+        "Forex": "forex.{asset}.quote",          # Exemple pour le Forex
+        "Volatility Index": "index.{asset}.quote" # Exemple pour les indices de volatilité
+    }
 
+
+    
     response = json.loads(message)
     print("Message reçu :")
     print(json.dumps(response, indent=4))
@@ -238,19 +249,26 @@ def on_message(ws, message):
 
         # Souscription aux canaux pour chaque actif sélectionné
         for asset in selected_assets:
-            channel_ticker = f"ticker.{asset}.raw"
-            if channel_ticker not in subscribed_channels:
-                subscribe_message = {
-                    "jsonrpc": "2.0",
-                    "method": "public/subscribe",
-                    "params": {
-                        "channels": [channel_ticker]
-                    },
-                    "id": 43
-                }
-                ws.send(json.dumps(subscribe_message))
-                subscribed_channels.add(channel_ticker)
-                print(f"Souscrit au canal {channel_ticker}")
+            if product_type in channel_formats:
+                # Utiliser le format approprié pour le type de produit
+                channel_ticker = channel_formats[product_type].format(asset=asset)
+                
+                # Vérifier que le canal n'est pas déjà souscrit
+                if channel_ticker not in subscribed_channels:
+                    subscribe_message = {
+                        "jsonrpc": "2.0",
+                        "method": "public/subscribe",
+                        "params": {
+                            "channels": [channel_ticker]
+                        },
+                        "id": 43
+                    }
+                    ws.send(json.dumps(subscribe_message))
+                    subscribed_channels.add(channel_ticker)
+                    print(f"Souscrit au canal {channel_ticker}")
+            else:
+                print(f"Aucun canal disponible pour le type de produit : {product_type}")
+                
 
     # Vérification de la réception des données
     if 'params' in response and 'data' in response['params']:
