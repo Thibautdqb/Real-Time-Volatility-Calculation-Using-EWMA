@@ -274,16 +274,18 @@ def on_message(ws, message):
     if 'params' in response and 'data' in response['params']:
         data = response['params']['data']
         
-        # Affichage des données reçues pour chaque actif, si elles contiennent mark_price
-        if 'mark_price' in data:
+        # Vérifie la présence de 'mark_price' ou d'autres champs de prix
+        price = data.get('mark_price') or data.get('last_price') or data.get('mid_price')
+        
+        if price is not None:
             asset = response['params']['channel'].split('.')[1]  # Extraction de l'actif du nom du canal
             if asset in selected_assets:
-                print(f"Données de prix reçues pour {asset}: {data['mark_price']}")
-
-                # Ajout des données de prix dans data_list pour cet actif
+                print(f"Données de prix reçues pour {asset}: {price}")
+    
+                # Ajout des données de prix dans `data_list` pour cet actif
                 data_list[asset].append({
                     'timestamp': time.time(),
-                    'mark_price': data['mark_price']
+                    'price': price  # Enregistrement sous le champ 'price' générique
                 })
                 print(f"Données ajoutées pour {asset} : {data_list[asset][-1]}")
 
