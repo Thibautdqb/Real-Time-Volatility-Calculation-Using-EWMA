@@ -223,13 +223,16 @@ def envoyer_email_rapport_volatilites(volatility_data):
     except Exception as e:
         print(f"Erreur lors de l'envoi de l'email : {e}")
 
+
+
+
 def on_message(ws, message):
     global data_list, collecte_terminee, subscribed_channels
     last_volatility_calc_times = {asset: time.time() - 3 for asset in selected_assets}  # Initialisation pour chaque actif
 
     response = json.loads(message)
     print("Message reçu :")
-    print(json.dumps(response, indent=4))
+    print(json.dumps(response, indent=4))  # Log complet du message reçu pour vérification
 
     # Authentification réussie
     if 'result' in response and 'id' in response and response['id'] == 9929:
@@ -251,11 +254,11 @@ def on_message(ws, message):
                 subscribed_channels.add(channel_ticker)
                 print(f"Souscrit au canal {channel_ticker}")
 
-    # Vérification de la réception des données
+    # Vérification de la réception des données de marché
     if 'params' in response and 'data' in response['params']:
         data = response['params']['data']
         
-        # Affichage des données reçues pour chaque actif, si elles contiennent `mark_price`
+        # Vérification des données de prix pour chaque actif
         if 'mark_price' in data:
             asset = response['params']['channel'].split('.')[1]  # Extraction de l'actif du nom du canal
             if asset in selected_assets:
@@ -267,23 +270,31 @@ def on_message(ws, message):
                     'mark_price': data['mark_price']
                 })
                 print(f"Données ajoutées pour {asset} : {data_list[asset][-1]}")
+                print(f"Longueur actuelle de la fenêtre de données pour {asset} : {len(data_list[asset])}/{data_window}")
 
                 # Limite de la fenêtre de données pour l'actif (éviter les débordements)
                 if len(data_list[asset]) > data_window:
                     data_list[asset].pop(0)
+                    print(f"Fenêtre de données réduite pour {asset}. Taille actuelle : {len(data_list[asset])}")
 
-                # Vérification de l'intervalle de temps pour chaque actif individuellement
+                # Calcul de volatilité indépendant pour chaque actif
                 if time.time() - last_volatility_calc_times[asset] >= time_between_predictions:
-                    # Appliquer le modèle EWMA à l'actif avec les données collectées
+                    # Appliquer le modèle EWMA pour calculer la volatilité
+                    print(f"Calcul de la volatilité pour {asset}...")
                     appliquer_modele_ewma(asset, data_list[asset])
+
                     # Mettre à jour le graphique après le calcul de la volatilité
+                    print("Mise à jour du graphique...")
                     update_chart()
+
                     # Mettre à jour le temps de la dernière prédiction pour cet actif
                     last_volatility_calc_times[asset] = time.time()
             else:
                 print(f"Aucun traitement prévu pour cet actif : {asset}")
         else:
             print("Données reçues sans prix de marché (`mark_price`). Ignorées.")
+
+
 
 
 
