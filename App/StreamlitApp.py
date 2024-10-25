@@ -256,7 +256,7 @@ def on_message(ws, message):
         data = response['params']['data']
 
         # Gestion des données de prix pour chaque actif sélectionné
- for asset in selected_assets:
+     for asset in selected_assets:
         if 'mark_price' in data:
             data_list[asset].append({
                 'timestamp': time.time(),
