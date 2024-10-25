@@ -95,7 +95,7 @@ volatility_data = {asset: [] for asset in selected_assets}
 collecte_terminee = False  
 last_volatility_calc_time = time.time() - 3 
 
-
+status_placeholder = st.container()
 
 
 with status_placeholder:
