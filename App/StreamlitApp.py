@@ -251,24 +251,29 @@ def on_message(ws, message):
                 ws.send(json.dumps(subscribe_message))
                 subscribed_channels.add(channel_ticker)
                 print(f"Souscrit au canal {channel_ticker}")
-    # Traitement des données reçues en temps réel
+
+    # Vérification de la réception des données
     if 'params' in response and 'data' in response['params']:
         data = response['params']['data']
+        
+        # Affichage des données reçues pour chaque actif, si elles contiennent `mark_price`
+        if 'mark_price' in data:
+            asset = response['params']['channel'].split('.')[1]  # Extraction de l'actif du nom du canal
+            if asset in selected_assets:
+                print(f"Données de prix reçues pour {asset}: {data['mark_price']}")
 
-        # Gestion des données de prix pour chaque actif sélectionné
-         for asset in selected_assets:
-            if 'mark_price' in data:
+                # Ajout des données de prix dans `data_list` pour cet actif
                 data_list[asset].append({
                     'timestamp': time.time(),
                     'mark_price': data['mark_price']
                 })
                 print(f"Données ajoutées pour {asset} : {data_list[asset][-1]}")
-    
-                # Limiter la taille de la fenêtre de données pour l'actif (éviter les débordements)
+
+                # Limite de la fenêtre de données pour l'actif (éviter les débordements)
                 if len(data_list[asset]) > data_window:
                     data_list[asset].pop(0)
-    
-                # Vérification si l'intervalle de temps entre les prédictions est atteint
+
+                # Vérification de l'intervalle de temps entre les prédictions
                 if time.time() - last_volatility_calc_time >= time_between_predictions:
                     # Appliquer le modèle EWMA à l'actif avec les données collectées
                     appliquer_modele_ewma(asset, data_list[asset])
@@ -276,6 +281,10 @@ def on_message(ws, message):
                     update_chart()
                     # Mettre à jour le temps de la dernière prédiction
                     last_volatility_calc_time = time.time()
+            else:
+                print(f"Aucun traitement prévu pour cet actif : {asset}")
+        else:
+            print("Données reçues sans prix de marché (`mark_price`). Ignorées.")
 
 
 def on_open(ws):
