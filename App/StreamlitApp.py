@@ -285,11 +285,19 @@ def on_error(ws, error):
         time.sleep(5)
 
 
+# Limite les tentatives de reconnexion
+reconnection_attempts = 0
+
 def on_close(ws, close_status_code, close_msg):
+    global reconnection_attempts
     print(f"Connexion fermée : Code {close_status_code}, Message : {close_msg}")
-    print("Tentative de reconnexion dans 5 secondes...")
-    time.sleep(5)
-    ws.run_forever()
+    if reconnection_attempts < 5:  # Limite à 5 tentatives
+        reconnection_attempts += 1
+        print("Tentative de reconnexion dans 5 secondes...")
+        time.sleep(5)
+        ws.run_forever()
+    else:
+        print("Nombre de tentatives de reconnexion atteint. Veuillez vérifier votre connexion.")
 
 
 if __name__ == "__main__":
