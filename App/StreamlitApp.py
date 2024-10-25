@@ -357,6 +357,14 @@ def charger_donnees_tick_deribit(asset):
         if "result" in data and all(key in data["result"] for key in ["ticks", "close"]):
             historique_data = [{'timestamp': ts / 1000, 'mark_price': close} 
                                for ts, close in zip(data["result"]["ticks"], data["result"]["close"])]
+            
+            # Convertir les données en DataFrame pour un affichage plus lisible
+            df = pd.DataFrame(historique_data)
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
+            
+            print(f"Dataset des données historiques pour {asset}:")
+            print(df)
+            
             return historique_data
         else:
             st.warning(f"Les données de l'heure précédente pour {asset} ne sont pas disponibles ou sont incomplètes.")
@@ -370,7 +378,7 @@ def charger_donnees_tick_deribit(asset):
         st.warning(f"Une erreur inattendue est survenue lors de la récupération des données pour {asset}: {e}")
         print(f"Erreur inattendue: {e}")
         return []
-
+        
 
 
 if __name__ == "__main__":
