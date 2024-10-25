@@ -323,6 +323,8 @@ def calculer_volatilite_initiale(asset, historique_data, lambda_factor=0.94):
         })
 
 
+
+
 def charger_donnees_historiques_deribit(asset, limit=100):
     """
     Cette fonction récupère des données historiques pour un actif donné via l'API de Deribit.
@@ -339,11 +341,11 @@ def charger_donnees_historiques_deribit(asset, limit=100):
         response = requests.get(url, params=params)
         response.raise_for_status()  # vérifie si la requête a échoué
         data = response.json()
-        print(data)  # Debug : voir les données retournées
         
         # Vérifie si les données contiennent les clés nécessaires
-        if "result" in data and "t" in data["result"] and "c" in data["result"]:
-            historique_data = [{'timestamp': ts / 1000, 'mark_price': close} for ts, close in zip(data["result"]["t"], data["result"]["c"])]
+        if "result" in data and all(key in data["result"] for key in ["ticks", "close"]):
+            historique_data = [{'timestamp': ts / 1000, 'mark_price': close} 
+                               for ts, close in zip(data["result"]["ticks"], data["result"]["close"])]
             return historique_data
         else:
             st.warning(f"Les données historiques pour {asset} sont incomplètes.")
