@@ -11,6 +11,10 @@ import numpy as np
 import streamlit as st 
 import matplotlib.pyplot as plt
 import plotly.graph_objs as go
+import requests
+
+
+
 
 # Configuration de la page Streamlit
 st.set_page_config(
@@ -104,7 +108,7 @@ def update_chart():
         # Si aucune donnée n'est disponible, afficher un message dans le placeholder
         chart_placeholder.write("No data available to display for the selected assets.")
 
-def appliquer_modele_ewma(asset, data, lambda_factor=0.10):
+def appliquer_modele_ewma(asset, data, lambda_factor=0.94):
     global volatility_data
 
     prices = pd.Series([item['mark_price'] for item in data])
@@ -300,10 +304,66 @@ def on_close(ws, close_status_code, close_msg):
         print("Nombre de tentatives de reconnexion atteint. Veuillez vérifier votre connexion.")
 
 
+
+def calculer_volatilite_initiale(asset, historique_data, lambda_factor=0.94):
+    global volatility_data
+
+    prices = pd.Series([item['mark_price'] for item in historique_data])
+    returns = np.log(prices / prices.shift(1)).dropna()
+    variance = returns.var()
+
+    for r in returns:
+        variance = lambda_factor * variance + (1 - lambda_factor) * (r ** 2)
+
+    volatility = np.sqrt(variance)
+    for item in historique_data:
+        volatility_data[asset].append({
+            'timestamp': item['timestamp'],
+            'volatility': volatility
+        })
+
+
+def charger_donnees_historiques_deribit(asset, limit=100):
+    """
+    Cette fonction récupère des données historiques pour un actif donné via l'API de Deribit.
+    """
+    url = f"https://www.deribit.com/api/v2/public/get_tradingview_chart_data"
+    params = {
+        "instrument_name": asset,
+        "resolution": "1D",  # Période de temps (ici journalière), modifiable selon besoin
+        "start_timestamp": int(time.time() * 1000) - (limit * 86400000),  # Limit derniers jours
+        "end_timestamp": int(time.time() * 1000)
+    }
+    
+    response = requests.get(url, params=params)
+    data = response.json()
+    
+    if data["result"]:
+        historique_data = [{'timestamp': ts / 1000, 'mark_price': close} for ts, close in zip(data["result"]["t"], data["result"]["c"])]
+        return historique_data
+    else:
+        return []
+
+
 if __name__ == "__main__":
-    ws = websocket.WebSocketApp(DERIBIT_WS_URL,
-                                on_open=on_open,
-                                on_message=on_message,
-                                on_close=on_close,
-                                on_error=on_error)
+    # Initialisation des données historiques pour chaque actif sélectionné
+    for asset in selected_assets:
+        historique_data = charger_donnees_historiques_deribit(asset, limit=data_window)
+        if historique_data:
+            calculer_volatilite_initiale(asset, historique_data)
+        else:
+            st.warning(f"Pas de données historiques pour l'actif {asset}.")
+    
+    # Mise à jour du graphique avec les données historiques
+    update_chart()  # Affiche le graphique dès le démarrage
+
+    # Lancement de la connexion WebSocket pour la collecte de données en temps réel
+    ws = websocket.WebSocketApp(
+        DERIBIT_WS_URL,
+        on_open=on_open,
+        on_message=on_message,
+        on_close=on_close,
+        on_error=on_error
+    )
     ws.run_forever()
+
