@@ -224,7 +224,8 @@ def envoyer_email_rapport_volatilites(volatility_data):
         print(f"Erreur lors de l'envoi de l'email : {e}")
 
 def on_message(ws, message):
-    global data_list, collecte_terminee, subscribed_channels, last_volatility_calc_time
+    global data_list, collecte_terminee, subscribed_channels
+    last_volatility_calc_times = {asset: time.time() - 3 for asset in selected_assets}  # Initialisation pour chaque actif
 
     response = json.loads(message)
     print("Message reçu :")
@@ -271,18 +272,19 @@ def on_message(ws, message):
                 if len(data_list[asset]) > data_window:
                     data_list[asset].pop(0)
 
-                # Vérification de l'intervalle de temps entre les prédictions
-                if time.time() - last_volatility_calc_time >= time_between_predictions:
+                # Vérification de l'intervalle de temps pour chaque actif individuellement
+                if time.time() - last_volatility_calc_times[asset] >= time_between_predictions:
                     # Appliquer le modèle EWMA à l'actif avec les données collectées
                     appliquer_modele_ewma(asset, data_list[asset])
                     # Mettre à jour le graphique après le calcul de la volatilité
                     update_chart()
-                    # Mettre à jour le temps de la dernière prédiction
-                    last_volatility_calc_time = time.time()
+                    # Mettre à jour le temps de la dernière prédiction pour cet actif
+                    last_volatility_calc_times[asset] = time.time()
             else:
                 print(f"Aucun traitement prévu pour cet actif : {asset}")
         else:
             print("Données reçues sans prix de marché (`mark_price`). Ignorées.")
+
 
 
 def on_open(ws):
