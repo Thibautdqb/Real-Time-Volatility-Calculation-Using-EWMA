@@ -354,12 +354,14 @@ def charger_donnees_tick_deribit(asset):
             df = pd.DataFrame(historique_data)
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
             
-            # Afficher le titre et les DataFrames côte à côte avec Streamlit
+            # Afficher le titre et les DataFrames côte à côte avec une seule paire de colonnes
             st.title(f"Datasets des données historiques pour {asset}")
             col1, col2 = st.columns(2)
+            
             with col1:
                 st.write("Données brutes")
                 st.dataframe(df)
+            
             with col2:
                 # Exemple : affiche une autre DataFrame (ici on peut utiliser une transformation ou un autre jeu de données)
                 df_analyse = df.copy()  # Transformer les données pour l'exemple
