@@ -325,6 +325,12 @@ def calculer_volatilite_initiale(asset, historique_data, lambda_factor=0.94):
 
 
 
+
+
+
+
+
+
 def charger_donnees_tick_deribit(asset):
     """
     Cette fonction récupère des données de l'heure précédente pour un actif donné via l'API de Deribit.
@@ -344,28 +350,26 @@ def charger_donnees_tick_deribit(asset):
     
     try:
         response = requests.get(url, params=params)
+        response.raise_for_status()  # vérifie si la requête a échoué
         data = response.json()
         
         # Vérifie si le résultat est valide et contient les clés nécessaires
-        if "result" in data and "t" in data["result"] and "c" in data["result"]:
-            historique_data = [{'timestamp': ts / 1000, 'mark_price': close} for ts, close in zip(data["result"]["t"], data["result"]["c"])]
+        if "result" in data and all(key in data["result"] for key in ["ticks", "close"]):
+            historique_data = [{'timestamp': ts / 1000, 'mark_price': close} 
+                               for ts, close in zip(data["result"]["ticks"], data["result"]["close"])]
             return historique_data
         else:
             st.warning(f"Les données de l'heure précédente pour {asset} ne sont pas disponibles ou sont incomplètes.")
             return []
     
     except requests.exceptions.RequestException as e:
-        # Avertissement en cas d'erreur de connexion ou autre exception de requête
         st.warning(f"Erreur de connexion pour récupérer les données de {asset}: {e}")
+        print(f"Erreur de connexion: {e}")
         return []
     except Exception as e:
-        # Avertissement général pour toute autre exception
         st.warning(f"Une erreur inattendue est survenue lors de la récupération des données pour {asset}: {e}")
+        print(f"Erreur inattendue: {e}")
         return []
-
-
-
-
 
 
 
