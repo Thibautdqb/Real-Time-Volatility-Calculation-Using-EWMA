@@ -372,7 +372,7 @@ def charger_donnees_tick_deribit(asset):
 if __name__ == "__main__":
     # Initialisation des données historiques pour chaque actif sélectionné
     for asset in selected_assets:
-        historique_data = charger_donnees_historiques_deribit(asset, limit=data_window)
+        historique_data = charger_donnees_tick_deribit(asset)
         if historique_data:
             calculer_volatilite_initiale(asset, historique_data)
         else:
