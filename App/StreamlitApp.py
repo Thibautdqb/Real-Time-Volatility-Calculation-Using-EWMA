@@ -72,7 +72,6 @@ time_between_predictions = st.sidebar.number_input("Time interval between predic
 
 # Titre et description de l'application
 st.title(f"Real-time volatility (EWMA) for selected assets")
-
 st.write(f"This Streamlit application enables you to track the volatility of multiple assets in real time, calculated instantly from market data transmitted via WebSocket. An interactive graph continuously illustrates changes in the volatility of these assets. When 100 real-time estimates are collected, a full report is automatically sent by e-mail.")
 
 # Placeholder pour le graphique
