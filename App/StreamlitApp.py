@@ -65,6 +65,9 @@ elif product_type == "Volatility Index":
         ["VIX"]
     )
 
+# Champs de saisie pour l'email, la fenêtre de données, et l'intervalle de prédiction dans la sidebar
+to_email = st.sidebar.text_input("Enter your email address to receive reports:")
+data_window = st.sidebar.number_input("Enter the data window size (number of data points):", min_value=50, max_value=500, value=100, step=10)
 time_between_predictions = st.sidebar.number_input("Time interval between predictions (in seconds):", min_value=0.1, max_value=60.0, value=10.0, step=0.1)
 
 # Titre et description de l'application
@@ -170,21 +173,34 @@ def envoyer_email_rapport_volatilites(volatility_data):
     message_html = """
     <html>
         <body>
-@@ -189,6 +254,7 @@ def envoyer_email_rapport_volatilites(volatility_data):
+            <p>Bonjour,</p>
+            <p>Veuillez trouver ci-dessous le rapport des <strong>100 derniers indices de volatilité</strong> générés par le modèle EWMA :</p>
+            <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+                <thead>
+                    <tr style="background-color: #f2f2f2;">
+                        <th style="text-align: left;">Timestamp</th>
+                        <th style="text-align: left;">Volatilité</th>
+                    </tr>
+                </thead>
                 <tbody>
     """
 
     for entry in volatility_data:
         time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(entry['timestamp']))
         volatilite_str = f"{entry['volatility']:.6f}"
-@@ -199,6 +265,7 @@ def envoyer_email_rapport_volatilites(volatility_data):
+        message_html += f"""
+                    <tr>
+                        <td>{time_str}</td>
+                        <td>{volatilite_str}</td>
                     </tr>
         """
 
     message_html += """
                 </tbody>
             </table>
-@@ -208,8 +275,10 @@ def envoyer_email_rapport_volatilites(volatility_data):
+            <p>Merci et à bientôt,</p>
+            <p><em>Équipe d'analyse des données financières</em></p>
+        </body>
     </html>
     """
 
@@ -193,7 +209,10 @@ def envoyer_email_rapport_volatilites(volatility_data):
     try:
         context = ssl.create_default_context()
         with smtplib.SMTP(serveur_smtp, port_smtp) as serveur:
-@@ -220,88 +289,79 @@ def envoyer_email_rapport_volatilites(volatility_data):
+            serveur.starttls(context=context)
+            serveur.login(email_expediteur, mot_de_passe)
+            serveur.sendmail(email_expediteur, destinataire_email, msg.as_string())
+            print("Email envoyé avec succès!")
     except Exception as e:
         print(f"Erreur lors de l'envoi de l'email : {e}")
 
@@ -278,7 +297,8 @@ def on_error(ws, error):
 def on_close(ws, close_status_code, close_msg):
     print(f"Connexion fermée : Code {close_status_code}, Message : {close_msg}")
     print("Tentative de reconnexion dans 5 secondes...")
-@@ -310,9 +370,12 @@ def on_close(ws, close_status_code, close_msg):
+    time.sleep(5)
+    ws.run_forever()
 
 
 if __name__ == "__main__":
