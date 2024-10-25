@@ -362,8 +362,9 @@ def charger_donnees_tick_deribit(asset):
             df = pd.DataFrame(historique_data)
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
             
-            print(f"Dataset des données historiques pour {asset}:")
-            print(df)
+            # Afficher le titre et le DataFrame avec Streamlit
+            st.title(f"Dataset des données historiques pour {asset}")
+            st.dataframe(df)
             
             return historique_data
         else:
@@ -372,11 +373,9 @@ def charger_donnees_tick_deribit(asset):
     
     except requests.exceptions.RequestException as e:
         st.warning(f"Erreur de connexion pour récupérer les données de {asset}: {e}")
-        print(f"Erreur de connexion: {e}")
         return []
     except Exception as e:
         st.warning(f"Une erreur inattendue est survenue lors de la récupération des données pour {asset}: {e}")
-        print(f"Erreur inattendue: {e}")
         return []
         
 
