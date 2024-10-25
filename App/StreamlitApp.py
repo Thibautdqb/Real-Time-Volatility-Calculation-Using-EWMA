@@ -96,6 +96,12 @@ collecte_terminee = False
 last_volatility_calc_time = time.time() - 3 
 
 
+
+
+with status_placeholder:
+    st.subheader("Suivi des données et calculs de volatilité")
+    data_status = {asset: st.empty() for asset in selected_assets}
+
 def update_chart():
     # Créer une nouvelle figure pour afficher les actifs sélectionnés
     fig = go.Figure()
@@ -127,44 +133,36 @@ def update_chart():
         # Si aucune donnée n'est disponible, afficher un message dans le placeholder
         chart_placeholder.write("No data available to display for the selected assets.")
 
-
 def appliquer_modele_ewma(asset, data, lambda_factor=0.10):
     global volatility_data
 
     prices = pd.Series([item['mark_price'] for item in data])
 
+    # Vérifier si assez de données pour le calcul de la volatilité
     if len(prices) < 100:
-        st.write(f"Pas assez de données pour calculer la volatilité pour {asset}. Données actuelles : {len(prices)}")
+        data_status[asset].write(f"{asset} : Données actuelles = {len(prices)}, en attente de 100.")
         return None
 
     returns = np.log(prices / prices.shift(1)).dropna()
-
-    if returns.var() == 0:
-        st.write(f"La variance est nulle pour {asset}. Ignoré pour ce calcul.")
-        return None
-
     variance = returns.var()
 
+    # Calcul EWMA de la volatilité
     for r in returns:
         variance = lambda_factor * variance + (1 - lambda_factor) * (r ** 2)
 
     volatility = np.sqrt(variance)
     timestamp = time.time()
-    # Ajouter la volatilité calculée pour l'actif dans volatility_data
     volatility_data[asset].append({'timestamp': timestamp, 'volatility': volatility})
 
-    # Affichage de la volatilité pour cet actif à cette étape du calcul
-    st.write(f"Volatilité calculée pour {asset} : {volatility:.6f} à {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))}")
-    
-    # Vérification du contenu de volatility_data pour chaque actif
-    st.write(f"Données de volatilité pour {asset} :", volatility_data[asset])
+    # Afficher la mise à jour de la volatilité pour cet actif
+    data_status[asset].write(f"{asset} : Données de volatilité calculées ({len(volatility_data[asset])} points), Volatilité actuelle = {volatility:.6f}")
 
+    # Envoi du rapport si 100 points de volatilité sont atteints
     if len(volatility_data[asset]) >= 100:
         envoyer_email_rapport_volatilites(volatility_data[asset])        
         st.write(f"Rapport envoyé pour {asset}. Réinitialisation des données.")
         volatility_data[asset].clear()
     return volatility
-
 
 
 def envoyer_email_rapport_volatilites(volatility_data):
