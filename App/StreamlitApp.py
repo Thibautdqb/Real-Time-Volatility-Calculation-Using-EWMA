@@ -323,6 +323,9 @@ def calculer_volatilite_initiale(asset, historique_data, lambda_factor=0.94):
         })
 
 
+import requests
+import time
+
 def charger_donnees_historiques_deribit(asset, limit=100):
     """
     Cette fonction récupère des données historiques pour un actif donné via l'API de Deribit.
@@ -338,11 +341,16 @@ def charger_donnees_historiques_deribit(asset, limit=100):
     response = requests.get(url, params=params)
     data = response.json()
     
-    if data["result"]:
+    # Vérifie si le résultat est valide et contient les clés nécessaires
+    if "result" in data and "t" in data["result"] and "c" in data["result"]:
         historique_data = [{'timestamp': ts / 1000, 'mark_price': close} for ts, close in zip(data["result"]["t"], data["result"]["c"])]
         return historique_data
     else:
+        print(f"Erreur: Données historiques non disponibles pour {asset}.")
         return []
+
+
+
 
 
 if __name__ == "__main__":
