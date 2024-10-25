@@ -323,14 +323,6 @@ def calculer_volatilite_initiale(asset, historique_data, lambda_factor=0.94):
         })
 
 
-
-
-
-
-
-
-
-
 def charger_donnees_tick_deribit(asset):
     """
     Cette fonction récupère des données de l'heure précédente pour un actif donné via l'API de Deribit.
@@ -359,24 +351,23 @@ def charger_donnees_tick_deribit(asset):
                                for ts, close in zip(data["result"]["ticks"], data["result"]["close"])]
             
             # Convertir les données en DataFrame pour un affichage plus lisible
-            df = pd.DataFrame(historique_data)
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
+            df_historique = pd.DataFrame(historique_data)
+            df_historique['timestamp'] = pd.to_datetime(df_historique['timestamp'], unit='s')
             
-            # Afficher le titre et le DataFrame avec Streamlit
-            st.title(f"Dataset des données historiques pour {asset}")
-            st.dataframe(df)
-            
-            return historique_data
+            return df_historique
         else:
             st.warning(f"Les données de l'heure précédente pour {asset} ne sont pas disponibles ou sont incomplètes.")
-            return []
+            return None
     
     except requests.exceptions.RequestException as e:
         st.warning(f"Erreur de connexion pour récupérer les données de {asset}: {e}")
-        return []
+        return None
     except Exception as e:
         st.warning(f"Une erreur inattendue est survenue lors de la récupération des données pour {asset}: {e}")
-        return []
+        return None
+
+
+
         
 
 
