@@ -327,36 +327,36 @@ def charger_donnees_historiques_deribit(asset, limit=100):
     """
     Cette fonction récupère des données historiques pour un actif donné via l'API de Deribit.
     """
-    url = f"https://www.deribit.com/api/v2/public/get_tradingview_chart_data"
+    url = "https://www.deribit.com/api/v2/public/get_tradingview_chart_data"
     params = {
         "instrument_name": asset,
-        "resolution": "1D",  # Période de temps (ici journalière), modifiable selon besoin
-        "start_timestamp": int(time.time() * 1000) - (limit * 86400000),  # Limit derniers jours
+        "resolution": "1D",
+        "start_timestamp": int(time.time() * 1000) - (limit * 86400000),
         "end_timestamp": int(time.time() * 1000)
     }
-    
+
     try:
         response = requests.get(url, params=params)
+        response.raise_for_status()  # vérifie si la requête a échoué
         data = response.json()
+        print(data)  # Debug : voir les données retournées
         
-        # Vérifie si le résultat est valide et contient les clés nécessaires
+        # Vérifie si les données contiennent les clés nécessaires
         if "result" in data and "t" in data["result"] and "c" in data["result"]:
             historique_data = [{'timestamp': ts / 1000, 'mark_price': close} for ts, close in zip(data["result"]["t"], data["result"]["c"])]
             return historique_data
         else:
-            st.warning(f"Les données historiques pour {asset} ne sont pas disponibles ou sont incomplètes.")
+            st.warning(f"Les données historiques pour {asset} sont incomplètes.")
             return []
-    
+
     except requests.exceptions.RequestException as e:
-        # Avertissement en cas d'erreur de connexion ou autre exception de requête
         st.warning(f"Erreur de connexion pour récupérer les données de {asset}: {e}")
+        print(f"Erreur de connexion: {e}")
         return []
     except Exception as e:
-        # Avertissement général pour toute autre exception
-        st.warning(f"Une erreur inattendue est survenue lors de la récupération des données pour {asset}: {e}")
+        st.warning(f"Une erreur inattendue est survenue pour {asset}: {e}")
+        print(f"Erreur inattendue: {e}")
         return []
-
-
 
 
 
