@@ -29,41 +29,13 @@ st.set_page_config(
 st.sidebar.title("Volatility Analysis Settings")
 
 # Sélection de plusieurs actifs pour comparaison
-product_type = st.sidebar.selectbox(
-    "Choose the type of financial product:",
-    ["Cryptos", "Commodities", "Stocks", "ETFs", "Forex", "Volatility Index"]
-)
 
-if product_type == "Cryptos":
-    selected_assets = st.sidebar.multiselect(
+selected_assets = st.sidebar.multiselect(
         "Choose the cryptocurrencies:",
         ["BTC-PERPETUAL", "ETH-PERPETUAL", "BTC-USD", "ETH-USD"]
     )
-elif product_type == "Commodities":
-    selected_assets = st.sidebar.multiselect(
-        "Choose the commodities:",
-        ["GOLD", "SILVER", "OIL"]
-    )
-elif product_type == "Stocks":
-    selected_assets = st.sidebar.multiselect(
-        "Choose the stocks:",
-        ["AAPL", "GOOG", "AMZN", "MSFT", "TSLA", "NFLX", "FB"]
-    )
-elif product_type == "ETFs":
-    selected_assets = st.sidebar.multiselect(
-        "Choose the ETFs:",
-        ["SPY", "DIA", "QQQ"]
-    )
-elif product_type == "Forex":
-    selected_assets = st.sidebar.multiselect(
-        "Choose the forex pairs:",
-        ["EURUSD", "GBPUSD", "USDJPY"]
-    )
-elif product_type == "Volatility Index":
-    selected_assets = st.sidebar.multiselect(
-        "Choose the volatility index:",
-        ["VIX"]
-    )
+
+
 
 # Champs de saisie pour l'email, la fenêtre de données, et l'intervalle de prédiction dans la sidebar
 to_email = st.sidebar.text_input("Enter your email address to receive reports:")
