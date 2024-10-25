@@ -64,7 +64,7 @@ elif product_type == "Volatility Index":
         "Choose the volatility index:",
         ["VIX"]
     )
-@@ -71,109 +76,169 @@
+
 time_between_predictions = st.sidebar.number_input("Time interval between predictions (in seconds):", min_value=0.1, max_value=60.0, value=10.0, step=0.1)
 
 # Titre et description de l'application
