@@ -323,19 +323,20 @@ def calculer_volatilite_initiale(asset, historique_data, lambda_factor=0.94):
         })
 
 
-def charger_donnees_tick_deribit(asset):
+def charger_donnees_historiques_deribit(asset):
     """
-    Cette fonction récupère des données de l'heure précédente pour un actif donné via l'API de Deribit.
+    Cette fonction récupère des données historiques pour un actif donné via l'API de Deribit.
     """
     url = "https://www.deribit.com/api/v2/public/get_tradingview_chart_data"
     
-    # Calcul des timestamps pour l'heure précédente
+    # Calcul des timestamps pour les données historiques
+    limit = 100  # Nombre de jours à récupérer
     end_timestamp = int(time.time() * 1000)  # Timestamp actuel en millisecondes
-    start_timestamp = end_timestamp - 3600000  # Une heure avant en millisecondes
+    start_timestamp = end_timestamp - (limit * 86400000)  # Limit jours avant en millisecondes
 
     params = {
         "instrument_name": asset,
-        "resolution": "1",  # Utiliser une résolution fine (1 minute)
+        "resolution": "1D",
         "start_timestamp": start_timestamp,
         "end_timestamp": end_timestamp
     }
@@ -356,7 +357,7 @@ def charger_donnees_tick_deribit(asset):
             
             return df_historique
         else:
-            st.warning(f"Les données de l'heure précédente pour {asset} ne sont pas disponibles ou sont incomplètes.")
+            st.warning(f"Les données historiques pour {asset} ne sont pas disponibles ou sont incomplètes.")
             return None
     
     except requests.exceptions.RequestException as e:
@@ -365,7 +366,6 @@ def charger_donnees_tick_deribit(asset):
     except Exception as e:
         st.warning(f"Une erreur inattendue est survenue lors de la récupération des données pour {asset}: {e}")
         return None
-
 
 
         
