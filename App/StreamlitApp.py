@@ -325,40 +325,47 @@ def calculer_volatilite_initiale(asset, historique_data, lambda_factor=0.94):
 
 
 
-def charger_donnees_historiques_deribit(asset, limit=100):
+def charger_donnees_tick_deribit(asset):
     """
-    Cette fonction récupère des données historiques pour un actif donné via l'API de Deribit.
+    Cette fonction récupère des données de l'heure précédente pour un actif donné via l'API de Deribit.
     """
     url = "https://www.deribit.com/api/v2/public/get_tradingview_chart_data"
+    
+    # Calcul des timestamps pour l'heure précédente
+    end_timestamp = int(time.time() * 1000)  # Timestamp actuel en millisecondes
+    start_timestamp = end_timestamp - 3600000  # Une heure avant en millisecondes
+
     params = {
         "instrument_name": asset,
-        "resolution": "1D",
-        "start_timestamp": int(time.time() * 1000) - (limit * 86400000),
-        "end_timestamp": int(time.time() * 1000)
+        "resolution": "1",  # Utiliser une résolution fine (1 minute)
+        "start_timestamp": start_timestamp,
+        "end_timestamp": end_timestamp
     }
-
+    
     try:
         response = requests.get(url, params=params)
-        response.raise_for_status()  # vérifie si la requête a échoué
         data = response.json()
         
-        # Vérifie si les données contiennent les clés nécessaires
-        if "result" in data and all(key in data["result"] for key in ["ticks", "close"]):
-            historique_data = [{'timestamp': ts / 1000, 'mark_price': close} 
-                               for ts, close in zip(data["result"]["ticks"], data["result"]["close"])]
+        # Vérifie si le résultat est valide et contient les clés nécessaires
+        if "result" in data and "t" in data["result"] and "c" in data["result"]:
+            historique_data = [{'timestamp': ts / 1000, 'mark_price': close} for ts, close in zip(data["result"]["t"], data["result"]["c"])]
             return historique_data
         else:
-            st.warning(f"Les données historiques pour {asset} sont incomplètes.")
+            st.warning(f"Les données de l'heure précédente pour {asset} ne sont pas disponibles ou sont incomplètes.")
             return []
-
+    
     except requests.exceptions.RequestException as e:
+        # Avertissement en cas d'erreur de connexion ou autre exception de requête
         st.warning(f"Erreur de connexion pour récupérer les données de {asset}: {e}")
-        print(f"Erreur de connexion: {e}")
         return []
     except Exception as e:
-        st.warning(f"Une erreur inattendue est survenue pour {asset}: {e}")
-        print(f"Erreur inattendue: {e}")
+        # Avertissement général pour toute autre exception
+        st.warning(f"Une erreur inattendue est survenue lors de la récupération des données pour {asset}: {e}")
         return []
+
+
+
+
 
 
 
