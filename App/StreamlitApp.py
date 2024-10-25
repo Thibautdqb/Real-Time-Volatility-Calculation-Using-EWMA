@@ -128,19 +128,19 @@ def update_chart():
         chart_placeholder.write("No data available to display for the selected assets.")
 
 
-
-
 def appliquer_modele_ewma(asset, data, lambda_factor=0.10):
     global volatility_data
 
     prices = pd.Series([item['mark_price'] for item in data])
 
     if len(prices) < 100:
+        st.write(f"Pas assez de données pour calculer la volatilité pour {asset}. Données actuelles : {len(prices)}")
         return None
 
     returns = np.log(prices / prices.shift(1)).dropna()
 
     if returns.var() == 0:
+        st.write(f"La variance est nulle pour {asset}. Ignoré pour ce calcul.")
         return None
 
     variance = returns.var()
@@ -150,12 +150,21 @@ def appliquer_modele_ewma(asset, data, lambda_factor=0.10):
 
     volatility = np.sqrt(variance)
     timestamp = time.time()
+    # Ajouter la volatilité calculée pour l'actif dans volatility_data
     volatility_data[asset].append({'timestamp': timestamp, 'volatility': volatility})
+
+    # Affichage de la volatilité pour cet actif à cette étape du calcul
+    st.write(f"Volatilité calculée pour {asset} : {volatility:.6f} à {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))}")
+    
+    # Vérification du contenu de volatility_data pour chaque actif
+    st.write(f"Données de volatilité pour {asset} :", volatility_data[asset])
 
     if len(volatility_data[asset]) >= 100:
         envoyer_email_rapport_volatilites(volatility_data[asset])        
+        st.write(f"Rapport envoyé pour {asset}. Réinitialisation des données.")
         volatility_data[asset].clear()
     return volatility
+
 
 
 def envoyer_email_rapport_volatilites(volatility_data):
