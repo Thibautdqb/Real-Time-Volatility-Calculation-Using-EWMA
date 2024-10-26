@@ -379,7 +379,7 @@ def charger_donnees_tick_deribit(asset):
         return []
     except Exception as e:
         st.warning(f"Une erreur inattendue est survenue lors de la récupération des données pour {asset}: {e}")
-        return []
+        return []  
 
         
 
