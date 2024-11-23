@@ -389,21 +389,54 @@ def charger_donnees_tick_deribit(asset):
         st.warning(f"Une erreur inattendue est survenue lors de la récupération des données pour {asset}: {e}")
         return []  
 
-        
+
+
+def augmenter_resolution_historique(historique_data, interval_seconds):
+    """
+    Augmente la résolution des données historiques pour correspondre à l'intervalle défini par l'utilisateur.
+
+    :param historique_data: Liste de dicts contenant des timestamps et des prix.
+    :param interval_seconds: Intervalle cible en secondes.
+    :return: Nouvelle liste interpolée.
+    """
+    # Convertir les données historiques en DataFrame
+    df = pd.DataFrame(historique_data)
+    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')  # Convertir en datetime
+    df.set_index('timestamp', inplace=True)
+
+    # Générer une grille temporelle plus dense à l'intervalle désiré
+    new_index = pd.date_range(
+        start=df.index.min(),
+        end=df.index.max(),
+        freq=f"{interval_seconds}S"  # Fréquence basée sur l'intervalle utilisateur
+    )
+
+    # Appliquer l'interpolation linéaire pour les prix
+    df_interpolated = df.reindex(new_index).interpolate(method='linear')
+
+    # Retourner les données au format original (liste de dicts)
+    result = [
+        {'timestamp': ts.timestamp(), 'mark_price': price}
+        for ts, price in zip(df_interpolated.index, df_interpolated['mark_price'])
+    ]
+    return result
+
+
+
 if __name__ == "__main__":
-    # Initialisation des données historiques pour chaque actif sélectionné
     for asset in selected_assets:
         historique_data = charger_donnees_tick_deribit(asset)
         if historique_data:
+            historique_data = augmenter_resolution_historique(historique_data, int(time_between_predictions))
+            
+            # Afficher les données interpolées pour vérifier
+            st.write(f"Données interpolées pour {asset} (intervalle : {time_between_predictions} secondes):")
+            st.dataframe(pd.DataFrame(historique_data))
+            
             calculer_volatilite_initiale(asset, historique_data)
         else:
             st.warning(f"Pas de données historiques pour l'actif {asset}.")
 
-    # Mise à jour du graphique avec les données historiques
-    if any(volatility_data[asset] for asset in selected_assets):
-        update_chart()  # Affiche le graphique dès le démarrage
-    else:
-        st.warning("Pas de données suffisantes pour afficher un graphique initial.")
 
 
     
