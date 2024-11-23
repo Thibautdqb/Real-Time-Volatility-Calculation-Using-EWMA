@@ -306,29 +306,29 @@ def on_close(ws, close_status_code, close_msg):
 def calculer_volatilite_initiale(asset, historique_data, lambda_factor=0.94):
     global volatility_data
 
-    # Vérifiez que les données historiques contiennent suffisamment d'éléments
-    if len(historique_data) < 2:
+    if len(historique_data) < 2:  # Vérifiez qu'il y a au moins 2 points pour calculer les rendements
         st.warning(f"Pas assez de données historiques pour {asset}.")
         return
 
     prices = pd.Series([item['mark_price'] for item in historique_data])
-    returns = np.log(prices / prices.shift(1)).dropna()
+    returns = np.log(prices / prices.shift(1)).dropna()  # Rendements log
     variance = returns.var()
 
-    for r in returns:
+    volatility_points = []  # Liste temporaire pour stocker les points calculés
+    for i, r in enumerate(returns):
         variance = lambda_factor * variance + (1 - lambda_factor) * (r ** 2)
+        volatility = np.sqrt(variance)
 
-    volatility = np.sqrt(variance)
-
-    # Ajoutez toutes les données historiques avec le calcul de la volatilité
-    for i, item in enumerate(historique_data[1:], start=1):  # Ignorez le premier point (pas de return)
-        volatility_data[asset].append({
-            'timestamp': item['timestamp'],
+        # Stocker chaque volatilité calculée
+        volatility_points.append({
+            'timestamp': historique_data[i + 1]['timestamp'],  # Décalage pour aligner avec returns
             'volatility': volatility
         })
 
-    # Ajoutez un message de confirmation
-    st.write(f"Données historiques de volatilité initialisées pour {asset}. Points calculés : {len(volatility_data[asset])}")
+    # Ajouter toutes les données calculées au stockage global
+    volatility_data[asset].extend(volatility_points)
+
+    st.write(f"Volatilité initiale calculée pour {asset}. Points calculés : {len(volatility_points)}.")
 
 
 def charger_donnees_tick_deribit(asset):
