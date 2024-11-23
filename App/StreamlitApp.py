@@ -44,8 +44,7 @@ selected_assets = st.sidebar.multiselect(
 # Champs de saisie pour l'email, la fenêtre de données, et l'intervalle de prédiction dans la sidebar
 to_email = st.sidebar.text_input("Enter your email address to receive reports:")
 data_window = st.sidebar.number_input("Enter the data window size (number of data points):", min_value=50, max_value=500, value=100, step=10)
-time_between_predictions = st.sidebar.number_input("Time interval between predictions (in seconds):", min_value=0,1, max_value=60.0, value=10.0, step=0.1)
-
+time_between_predictions = st.sidebar.number_input("Time interval between predictions (in seconds):", min_value=0.1, max_value=60.0, value=10.0, step=0.1)
 
 # Titre et description de l'application
 st.title(f"Real-time volatility (EWMA) for selected assets")
