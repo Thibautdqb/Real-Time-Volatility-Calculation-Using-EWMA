@@ -78,14 +78,13 @@ with status_placeholder:
     data_status = {asset: st.empty() for asset in selected_assets}
 
 def update_chart():
-    # Créer une nouvelle figure pour afficher les actifs sélectionnés
     fig = go.Figure()
-    # Parcourir tous les actifs sélectionnés et vérifier qu'ils ont des données à afficher
+
     for asset in selected_assets:
         if len(volatility_data[asset]) > 0:
             df = pd.DataFrame(volatility_data[asset])
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
-            # Ajouter une nouvelle trace pour chaque actif
+
             fig.add_trace(go.Scatter(
                 x=df['timestamp'],
                 y=df['volatility'],
@@ -93,9 +92,8 @@ def update_chart():
                 name=f'Volatility (EWMA) - {asset}'
             ))
         else:
-            # Si pas de données pour cet actif, afficher un avertissement dans la console
-            print(f"Aucune donnée disponible pour {asset} à afficher dans le graphique.")
-    # Vérification : S'il y a au moins une trace ajoutée au graphique
+            print(f"Aucune donnée de volatilité pour {asset}.")
+
     if len(fig.data) > 0:
         fig.update_layout(
             title="Estimated volatility (EWMA) in real time for selected assets",
@@ -105,8 +103,8 @@ def update_chart():
         )
         chart_placeholder.plotly_chart(fig)
     else:
-        # Si aucune donnée n'est disponible, afficher un message dans le placeholder
         chart_placeholder.write("No data available to display for the selected assets.")
+
 
 def appliquer_modele_ewma(asset, data, lambda_factor=0.94):
     global volatility_data
@@ -308,6 +306,11 @@ def on_close(ws, close_status_code, close_msg):
 def calculer_volatilite_initiale(asset, historique_data, lambda_factor=0.94):
     global volatility_data
 
+    # Vérifiez que les données historiques contiennent suffisamment d'éléments
+    if len(historique_data) < 2:
+        st.warning(f"Pas assez de données historiques pour {asset}.")
+        return
+
     prices = pd.Series([item['mark_price'] for item in historique_data])
     returns = np.log(prices / prices.shift(1)).dropna()
     variance = returns.var()
@@ -316,11 +319,16 @@ def calculer_volatilite_initiale(asset, historique_data, lambda_factor=0.94):
         variance = lambda_factor * variance + (1 - lambda_factor) * (r ** 2)
 
     volatility = np.sqrt(variance)
-    for item in historique_data:
+
+    # Ajoutez toutes les données historiques avec le calcul de la volatilité
+    for i, item in enumerate(historique_data[1:], start=1):  # Ignorez le premier point (pas de return)
         volatility_data[asset].append({
             'timestamp': item['timestamp'],
             'volatility': volatility
         })
+
+    # Ajoutez un message de confirmation
+    st.write(f"Données historiques de volatilité initialisées pour {asset}. Points calculés : {len(volatility_data[asset])}")
 
 
 def charger_donnees_tick_deribit(asset):
@@ -382,8 +390,6 @@ def charger_donnees_tick_deribit(asset):
         return []  
 
         
-
-
 if __name__ == "__main__":
     # Initialisation des données historiques pour chaque actif sélectionné
     for asset in selected_assets:
@@ -392,6 +398,14 @@ if __name__ == "__main__":
             calculer_volatilite_initiale(asset, historique_data)
         else:
             st.warning(f"Pas de données historiques pour l'actif {asset}.")
+
+    # Mise à jour du graphique avec les données historiques
+    if any(volatility_data[asset] for asset in selected_assets):
+        update_chart()  # Affiche le graphique dès le démarrage
+    else:
+        st.warning("Pas de données suffisantes pour afficher un graphique initial.")
+
+
     
     # Mise à jour du graphique avec les données historiques
     update_chart()  # Affiche le graphique dès le démarrage
