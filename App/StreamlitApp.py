@@ -235,7 +235,7 @@ def on_message(ws, message):
                 print(f"Données de prix reçues pour {asset}: {data['mark_price']}")
 
                 # Récupérer les données mises en cache pour cet actif
-                cached_data = get_cached_data_list(asset)
+                cached_data = get_cached_volatility_data(asset)
 
                 # Ajout des nouvelles données de prix
                 cached_data.append({
