@@ -41,7 +41,7 @@ st.sidebar.title("Volatility Analysis Settings")
 
 selected_assets = st.sidebar.multiselect(
         "Choose the cryptocurrencies:",
-        ["BTC-PERPETUAL", "ETH-PERPETUAL", "SOL-PERPETUAL", "ADA-PERPETUAL", "AVAX-PERPETUAL", "LTC-PERPETUAL"]
+        ["BTC-PERPETUAL", "ETH-PERPETUAL", "SOL-PERPETUAL", "ADA-PERPETUAL", "AVAX-PERPETUAL"]
     )
 
 
