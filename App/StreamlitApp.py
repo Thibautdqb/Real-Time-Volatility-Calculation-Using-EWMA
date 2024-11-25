@@ -28,6 +28,11 @@ st.set_page_config(
         'About': "# Analyse en temps réel de la volatilité de plusieurs actifs\nCette application analyse la volatilité de plusieurs actifs en temps réel à l'aide du modèle EWMA."
     }
 )
+# Initialisation de `st.session_state` pour stocker les données
+if "volatility_data" not in st.session_state:
+    st.session_state.volatility_data = {}
+if "data_list" not in st.session_state:
+    st.session_state.data_list = {}
 
 # Barre latérale pour la sélection du stock/actif
 st.sidebar.title("Volatility Analysis Settings")
@@ -36,7 +41,7 @@ st.sidebar.title("Volatility Analysis Settings")
 
 selected_assets = st.sidebar.multiselect(
         "Choose the cryptocurrencies:",
-        ["BTC-PERPETUAL", "ETH-PERPETUAL", "BTC-USD", "ETH-USD"]
+        ["BTC-PERPETUAL", "ETH-PERPETUAL", "SOL-PERPETUAL", "ADA-PERPETUAL", "AVAX-PERPETUAL", "LTC-PERPETUAL"]
     )
 
 
@@ -56,8 +61,11 @@ chart_placeholder = st.empty()
 if not to_email:
     st.warning("Please enter your email address to receive the volatility reports.")
     st.stop()
-
+chart_placeholder = st.container()
+status_placeholder = st.container()
 progress_bar = st.progress(0)
+
+
 
 # URL du WebSocket Deribit (environnement de test ou production)
 DERIBIT_WS_URL = "wss://test.deribit.com/ws/api/v2"
@@ -73,69 +81,61 @@ last_volatility_calc_time = time.time() - 3
 status_placeholder = st.container()
 
 
+
 with status_placeholder:
     st.subheader("Suivi des données et calculs de volatilité")
     data_status = {asset: st.empty() for asset in selected_assets}
 
+# Fonctions utilitaires
+@st.cache_data
+def get_cached_volatility_data(asset):
+    return st.session_state.volatility_data.get(asset, [])
+
 def update_chart():
-    fig = go.Figure()
-
-    for asset in selected_assets:
-        if len(volatility_data[asset]) > 0:
-            df = pd.DataFrame(volatility_data[asset])
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
-
-            fig.add_trace(go.Scatter(
-                x=df['timestamp'],
-                y=df['volatility'],
-                mode='lines',
-                name=f'Volatility (EWMA) - {asset}'
-            ))
+    with chart_placeholder:
+        fig = go.Figure()
+        for asset in selected_assets:
+            cached_data = get_cached_volatility_data(asset)
+            if len(cached_data) > 0:
+                df = pd.DataFrame(cached_data)
+                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
+                fig.add_trace(go.Scatter(
+                    x=df['timestamp'],
+                    y=df['volatility'],
+                    mode='lines',
+                    name=f'Volatility (EWMA) - {asset}'
+                ))
+        if len(fig.data) > 0:
+            fig.update_layout(
+                title="Estimated volatility (EWMA) in real time for selected assets",
+                xaxis_title="Time",
+                yaxis_title="Volatility",
+                template="plotly_dark"
+            )
+            st.plotly_chart(fig, use_container_width=True)
         else:
-            print(f"Aucune donnée de volatilité pour {asset}.")
-
-    if len(fig.data) > 0:
-        fig.update_layout(
-            title="Estimated volatility (EWMA) in real time for selected assets",
-            xaxis_title="Time",
-            yaxis_title="Volatility",
-            template="plotly_dark"
-        )
-        chart_placeholder.plotly_chart(fig)
-    else:
-        chart_placeholder.write("No data available to display for the selected assets.")
+            st.write("No data available to display for the selected assets.")
 
 
 def appliquer_modele_ewma(asset, data, lambda_factor=0.94):
-    global volatility_data
-
     prices = pd.Series([item['mark_price'] for item in data])
-
-    # Vérifier si assez de données pour le calcul de la volatilité
     if len(prices) < 100:
         data_status[asset].write(f"{asset} : Données actuelles = {len(prices)}, en attente de 100.")
         return None
 
     returns = np.log(prices / prices.shift(1)).dropna()
     variance = returns.var()
-
-    # Calcul EWMA de la volatilité
     for r in returns:
         variance = lambda_factor * variance + (1 - lambda_factor) * (r ** 2)
 
     volatility = np.sqrt(variance)
     timestamp = time.time()
-    volatility_data[asset].append({'timestamp': timestamp, 'volatility': volatility})
-
-    # Afficher la mise à jour de la volatilité pour cet actif
-    data_status[asset].write(f"{asset} : Données de volatilité calculées ({len(volatility_data[asset])} points), Volatilité actuelle = {volatility:.6f}")
-
-    # Envoi du rapport si 100 points de volatilité sont atteints
-    if len(volatility_data[asset]) >= 100:
-        envoyer_email_rapport_volatilites(volatility_data[asset])        
-        st.write(f"Rapport envoyé pour {asset}. Réinitialisation des données.")
-        volatility_data[asset].clear()
+    if asset not in st.session_state.volatility_data:
+        st.session_state.volatility_data[asset] = []
+    st.session_state.volatility_data[asset].append({'timestamp': timestamp, 'volatility': volatility})
+    data_status[asset].write(f"{asset} : Volatilité actuelle = {volatility:.6f}")
     return volatility
+
 
 
 def envoyer_email_rapport_volatilites(volatility_data):
@@ -197,10 +197,8 @@ def envoyer_email_rapport_volatilites(volatility_data):
         print(f"Erreur lors de l'envoi de l'email : {e}")
 
 
-
-
 def on_message(ws, message):
-    global data_list, collecte_terminee, subscribed_channels, last_volatility_calc_time
+    global collecte_terminee, subscribed_channels, last_volatility_calc_time
 
     response = json.loads(message)
     print("Message reçu :")
@@ -236,21 +234,27 @@ def on_message(ws, message):
             if asset in selected_assets:
                 print(f"Données de prix reçues pour {asset}: {data['mark_price']}")
 
-                # Ajout des données de prix dans data_list pour cet actif
-                data_list[asset].append({
+                # Récupérer les données mises en cache pour cet actif
+                cached_data = get_cached_data_list(asset)
+
+                # Ajout des nouvelles données de prix
+                cached_data.append({
                     'timestamp': time.time(),
                     'mark_price': data['mark_price']
                 })
-                print(f"Données ajoutées pour {asset} : {data_list[asset][-1]}")
+                print(f"Données ajoutées pour {asset} : {cached_data[-1]}")
 
                 # Limite de la fenêtre de données pour l'actif (éviter les débordements)
-                if len(data_list[asset]) > data_window:
-                    data_list[asset].pop(0)
+                if len(cached_data) > data_window:
+                    cached_data.pop(0)
+
+                # Mettre à jour les données dans `st.session_state`
+                st.session_state.data_list[asset] = cached_data
 
                 # Vérification de l'intervalle de temps entre les prédictions
                 if time.time() - last_volatility_calc_time >= time_between_predictions:
                     # Appliquer le modèle EWMA à l'actif avec les données collectées
-                    appliquer_modele_ewma(asset, data_list[asset])
+                    appliquer_modele_ewma(asset, cached_data)
                     # Mettre à jour le graphique après le calcul de la volatilité
                     update_chart()
                     # Mettre à jour le temps de la dernière prédiction
@@ -259,7 +263,6 @@ def on_message(ws, message):
                 print(f"Aucun traitement prévu pour cet actif : {asset}")
         else:
             print("Données reçues sans prix de marché (mark_price). Ignorées.")
-
 
 
 def on_open(ws):
