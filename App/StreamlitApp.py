@@ -182,46 +182,75 @@ def appliquer_modele_ewma(asset, price_data, lambda_factor=0.94):
 
 # Gestion des messages reçus via WebSocket
 def on_message(ws, message):
-    """Gère les messages reçus via WebSocket."""
+    """Gère les messages reçus via WebSocket et traite les données en temps réel."""
     global last_volatility_calc_time
 
+    # Charger la réponse JSON
     response = json.loads(message)
 
-    # Vérification des données reçues
+    # Log : Réponse brute reçue
+    print(f"Message reçu : {json.dumps(response, indent=4)}")
+
+    # Vérifier si les données contiennent des informations pertinentes
     if 'params' in response and 'data' in response['params']:
         data = response['params']['data']
+
+        # Vérifier que les données contiennent un prix marqué
         if 'mark_price' in data:
-            asset = response['params']['channel'].split('.')[1]
+            asset = response['params']['channel'].split('.')[1]  # Extraction de l'actif
+            print(f"Asset détecté : {asset}")
+
             if asset in selected_assets:
-                # Récupérer ou initialiser les données de prix
+                # Récupérer ou initialiser les données de prix pour cet actif
                 cached_prices = get_cached_price_data(asset)
 
-                # Ajouter les nouvelles données de prix
+                # Ajouter les nouvelles données de prix avec un timestamp
                 cached_prices.append({
                     'timestamp': time.time(),
                     'mark_price': data['mark_price']
                 })
 
-                # Limiter la taille de la liste
-                if len(cached_prices) > data_window:
-                    cached_prices.pop(0)
+                # Log : Données ajoutées
+                print(f"Nouvelles données de prix ajoutées pour {asset}: {cached_prices[-1]}")
 
-                # Mettre à jour dans `st.session_state`
+                # Limiter la taille de la fenêtre de données
+                if len(cached_prices) > data_window:
+                    removed = cached_prices.pop(0)
+                    print(f"Donnée supprimée pour {asset} (fenêtre limitée à {data_window}): {removed}")
+
+                # Mettre à jour `st.session_state`
                 st.session_state.data_list[asset] = cached_prices
 
-                # Vérification de l'intervalle de temps pour calculer la volatilité
-                if time.time() - last_volatility_calc_time >= time_between_predictions:
-                    # Calcul de la volatilité
+                # Log : Longueur actuelle des données de prix
+                print(f"Longueur des données de prix pour {asset}: {len(cached_prices)}")
+
+                # Vérifier si le temps écoulé permet un nouveau calcul de volatilité
+                current_time = time.time()
+                time_since_last_calc = current_time - last_volatility_calc_time
+                print(f"Temps depuis le dernier calcul de volatilité : {time_since_last_calc:.2f} secondes")
+
+                if time_since_last_calc >= time_between_predictions:
+                    print(f"Calcul de la volatilité pour {asset} en cours...")
+
+                    # Calculer la volatilité en utilisant le modèle EWMA
                     new_volatility = appliquer_modele_ewma(asset, cached_prices)
-                    
+
                     if new_volatility is not None:
-                        print(f"New volatility for {asset}: {new_volatility}")
-                    
-                    # Mise à jour du graphique
+                        print(f"Nouvelle volatilité calculée pour {asset}: {new_volatility}")
+
+                    # Mettre à jour le graphique
                     update_chart()
 
-                    # Mise à jour du temps de la dernière prédiction
-                    last_volatility_calc_time = time.time()
+                    # Mettre à jour le temps du dernier calcul
+                    last_volatility_calc_time = current_time
+                else:
+                    print(f"Aucun calcul effectué pour {asset} (attente du prochain intervalle).")
+            else:
+                print(f"L'actif {asset} n'est pas sélectionné pour l'analyse.")
+        else:
+            print("Aucun prix marqué trouvé dans les données reçues. Ignoré.")
+    else:
+        print("Structure de données inattendue dans le message. Ignoré.")
 
 
 
