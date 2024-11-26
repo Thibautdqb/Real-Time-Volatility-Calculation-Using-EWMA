@@ -324,14 +324,16 @@ def envoyer_email_rapport_volatilites(volatility_data):
 
 
 def on_open(ws):
+    """Gestion de l'ouverture de la connexion WebSocket."""
     print("Connexion ouverte")
 
+    # Authentification
     auth_message = {
         "jsonrpc": "2.0",
         "id": 9929,
         "method": "public/auth",
         "params": {
-            "grant_type": "client_credentials",  
+            "grant_type": "client_credentials",
             "client_id": st.secrets["api_credentials"]["API_KEY"],
             "client_secret": st.secrets["api_credentials"]["API_SECRET"]
         }
@@ -339,13 +341,30 @@ def on_open(ws):
     ws.send(json.dumps(auth_message))
     print("Message d'authentification envoyé")
 
+    # Souscription unique aux actifs sélectionnés
+    for asset in selected_assets:
+        channel_ticker = f"ticker.{asset}.raw"
+        if channel_ticker not in subscribed_channels:
+            subscribe_message = {
+                "jsonrpc": "2.0",
+                "method": "public/subscribe",
+                "params": {"channels": [channel_ticker]},
+                "id": 43
+            }
+            ws.send(json.dumps(subscribe_message))
+            subscribed_channels.add(channel_ticker)
+            print(f"Souscrit au canal {channel_ticker}")
+
 
 def on_error(ws, error):
+    """Gestion des erreurs de la connexion WebSocket."""
     print("Erreur : ", error)
 
     if "too_many_requests" in str(error):
-        print("Trop de requêtes envoyées. Attente de 5 secondes avant de réessayer...")
-        time.sleep(5)
+        print("Trop de requêtes envoyées. Attente prolongée avant de réessayer...")
+        time.sleep(30)  # Attendre plus longtemps avant de réessayer
+        return
+
 
 
 # Limite les tentatives de reconnexion
