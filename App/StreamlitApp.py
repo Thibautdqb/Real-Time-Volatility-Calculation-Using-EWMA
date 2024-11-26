@@ -298,31 +298,42 @@ def on_close(ws, close_status_code, close_msg):
 
 
 def calculer_volatilite_initiale(asset, historique_data, lambda_factor=0.94):
-    global volatility_data
-
-    if len(historique_data) < 2:  # Vérifiez qu'il y a au moins 2 points pour calculer les rendements
+    """
+    Calcule la volatilité initiale à partir des données historiques et l'enregistre dans st.session_state.
+    """
+    # Vérifiez qu'il y a au moins 2 points pour calculer les rendements
+    if len(historique_data) < 2:
         st.warning(f"Pas assez de données historiques pour {asset}.")
         return
 
+    # Récupérer ou initialiser la liste des volatilités pour l'actif
+    if asset not in st.session_state.volatility_data:
+        st.session_state.volatility_data[asset] = []
+
+    # Extraire les prix et calculer les rendements log
     prices = pd.Series([item['mark_price'] for item in historique_data])
-    returns = np.log(prices / prices.shift(1)).dropna()  # Rendements log
+    returns = np.log(prices / prices.shift(1)).dropna()
     variance = returns.var()
 
     volatility_points = []  # Liste temporaire pour stocker les points calculés
+
+    # Calculer la volatilité avec EWMA
     for i, r in enumerate(returns):
         variance = lambda_factor * variance + (1 - lambda_factor) * (r ** 2)
         volatility = np.sqrt(variance)
 
-        # Stocker chaque volatilité calculée
+        # Stocker chaque volatilité calculée avec le timestamp correspondant
         volatility_points.append({
             'timestamp': historique_data[i + 1]['timestamp'],  # Décalage pour aligner avec returns
             'volatility': volatility
         })
 
-    # Ajouter toutes les données calculées au stockage global
-    volatility_data[asset].extend(volatility_points)
+    # Ajouter les points calculés à st.session_state.volatility_data
+    st.session_state.volatility_data[asset].extend(volatility_points)
 
+    # Afficher un message avec le nombre de points calculés
     st.write(f"Volatilité initiale calculée pour {asset}. Points calculés : {len(volatility_points)}.")
+
 
 
 def charger_donnees_tick_deribit(asset):
