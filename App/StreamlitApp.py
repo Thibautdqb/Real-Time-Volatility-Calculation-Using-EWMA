@@ -82,12 +82,26 @@ if "data_list" not in st.session_state:
 if "volatility_data" not in st.session_state:
     st.session_state.volatility_data = {asset: [] for asset in selected_assets}
 
+
+
+
+
 # Placeholders et gestion de l'interface utilisateur
 status_placeholder = st.container()
 
 with status_placeholder:
     st.subheader("Suivi des données et calculs de volatilité")
     data_status = {asset: st.empty() for asset in selected_assets}
+
+if "app_initialized" not in st.session_state:
+    reset_session_state()  # Réinitialiser les données
+    st.session_state.app_initialized = True  # Marquer l'application comme initialisée
+
+def reset_session_state():
+    """Réinitialise les espaces de stockage dans st.session_state."""
+    st.session_state.data_list = {asset: [] for asset in selected_assets}
+    st.session_state.volatility_data = {asset: [] for asset in selected_assets}
+
 
 
 # Fonction utilitaire pour récupérer les données de volatilité en cache
