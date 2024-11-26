@@ -235,7 +235,7 @@ def on_message(ws, message):
 
                 # Récupérer les données mises en cache pour cet actif
                 cached_data = get_cached_volatility_data(asset)
-
+                print(f"---------------------------------------- {cached_data}")
                 # Ajout des nouvelles données de prix
                 cached_data.append({
                     'timestamp': time.time(),
