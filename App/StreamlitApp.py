@@ -211,8 +211,16 @@ def on_message(ws, message):
 
                 # Vérification de l'intervalle de temps pour calculer la volatilité
                 if time.time() - last_volatility_calc_time >= time_between_predictions:
-                    appliquer_modele_ewma(asset, cached_prices)
+                    # Calcul de la volatilité
+                    new_volatility = appliquer_modele_ewma(asset, cached_prices)
+                    
+                    if new_volatility is not None:
+                        print(f"New volatility for {asset}: {new_volatility}")
+                    
+                    # Mise à jour du graphique
                     update_chart()
+
+                    # Mise à jour du temps de la dernière prédiction
                     last_volatility_calc_time = time.time()
 
 
