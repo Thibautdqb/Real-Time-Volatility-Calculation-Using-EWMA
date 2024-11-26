@@ -72,42 +72,48 @@ DERIBIT_WS_URL = "wss://test.deribit.com/ws/api/v2"
 
 # Variables pour stocker les données par actif
 subscribed_channels = set()
-data_list = {asset: [] for asset in selected_assets}  
-volatility_data = {asset: [] for asset in selected_assets}  
 
 collecte_terminee = False  
 last_volatility_calc_time = time.time() - 3 
-
-# Initialisation de `st.session_state` si non défini
-if "volatility_data" not in st.session_state:
-    st.session_state.volatility_data = {}
+# Initialisation des espaces dans `st.session_state` si non définis
 if "data_list" not in st.session_state:
-    st.session_state.data_list = {}
+    st.session_state.data_list = {asset: [] for asset in selected_assets}
+if "volatility_data" not in st.session_state:
+    st.session_state.volatility_data = {asset: [] for asset in selected_assets}
 
+# Placeholders et gestion de l'interface utilisateur
 status_placeholder = st.container()
 
-# Affichage du suivi
 with status_placeholder:
     st.subheader("Suivi des données et calculs de volatilité")
     data_status = {asset: st.empty() for asset in selected_assets}
 
 
-# Fonctions utilitaires
+# Fonction utilitaire pour récupérer les données de volatilité en cache
 def get_cached_volatility_data(asset):
-    """Récupère les données en cache pour un actif donné, initialise si non défini."""
-    if "volatility_data" not in st.session_state:
-        st.session_state.volatility_data = {}
-    return st.session_state.volatility_data.get(asset, [])
+    """Récupère ou initialise les données de volatilité pour un actif donné."""
+    if asset not in st.session_state.volatility_data:
+        st.session_state.volatility_data[asset] = []
+    return st.session_state.volatility_data[asset]
 
 
+# Fonction utilitaire pour récupérer ou initialiser les fenêtres de prix
+def get_cached_price_data(asset):
+    """Récupère ou initialise les données de prix pour un actif donné."""
+    if asset not in st.session_state.data_list:
+        st.session_state.data_list[asset] = []
+    return st.session_state.data_list[asset]
+
+
+# Mise à jour du graphique en fonction des données de volatilité
 def update_chart():
-    """Mise à jour du graphique basé sur les données de volatilité."""
+    """Met à jour le graphique en fonction des données de volatilité."""
     with chart_placeholder:
         fig = go.Figure()
         for asset in selected_assets:
-            cached_data = get_cached_volatility_data(asset)
-            if len(cached_data) > 0:
-                df = pd.DataFrame(cached_data)
+            cached_volatility = get_cached_volatility_data(asset)
+            if len(cached_volatility) > 0:
+                df = pd.DataFrame(cached_volatility)
                 df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
                 fig.add_trace(go.Scatter(
                     x=df['timestamp'],
@@ -127,9 +133,10 @@ def update_chart():
             st.write("No data available to display for the selected assets.")
 
 
-def appliquer_modele_ewma(asset, data, lambda_factor=0.94):
-    """Applique le modèle EWMA pour calculer la volatilité."""
-    prices = pd.Series([item['mark_price'] for item in data])
+# Calcul de la volatilité avec le modèle EWMA
+def appliquer_modele_ewma(asset, price_data, lambda_factor=0.94):
+    """Calcule la volatilité à l'aide du modèle EWMA."""
+    prices = pd.Series([item['mark_price'] for item in price_data])
     if len(prices) < 100:
         data_status[asset].write(f"{asset} : Données actuelles = {len(prices)}, en attente de 100.")
         return None
@@ -141,59 +148,45 @@ def appliquer_modele_ewma(asset, data, lambda_factor=0.94):
 
     volatility = np.sqrt(variance)
     timestamp = time.time()
-    if asset not in st.session_state.volatility_data:
-        st.session_state.volatility_data[asset] = []
-    st.session_state.volatility_data[asset].append({'timestamp': timestamp, 'volatility': volatility})
+    cached_volatility = get_cached_volatility_data(asset)
+    cached_volatility.append({'timestamp': timestamp, 'volatility': volatility})
+    st.session_state.volatility_data[asset] = cached_volatility
     data_status[asset].write(f"{asset} : Volatilité actuelle = {volatility:.6f}")
     return volatility
 
 
+# Gestion des messages reçus via WebSocket
 def on_message(ws, message):
-    """Gestion des messages reçus via WebSocket."""
-    global collecte_terminee, subscribed_channels, last_volatility_calc_time
+    """Gère les messages reçus via WebSocket."""
+    global last_volatility_calc_time
 
     response = json.loads(message)
 
-    # Vérification de l'authentification réussie
-    if 'result' in response and 'id' in response and response['id'] == 9929:
-        for asset in selected_assets:
-            channel_ticker = f"ticker.{asset}.raw"
-            if channel_ticker not in subscribed_channels:
-                subscribe_message = {
-                    "jsonrpc": "2.0",
-                    "method": "public/subscribe",
-                    "params": {
-                        "channels": [channel_ticker]
-                    },
-                    "id": 43
-                }
-                ws.send(json.dumps(subscribe_message))
-                subscribed_channels.add(channel_ticker)
-
-    # Gestion des données de prix reçues
+    # Vérification des données reçues
     if 'params' in response and 'data' in response['params']:
         data = response['params']['data']
         if 'mark_price' in data:
             asset = response['params']['channel'].split('.')[1]
             if asset in selected_assets:
-                cached_data = get_cached_volatility_data(asset)
+                # Récupérer ou initialiser les données de prix
+                cached_prices = get_cached_price_data(asset)
 
-                # Ajouter les données
-                cached_data.append({
+                # Ajouter les nouvelles données de prix
+                cached_prices.append({
                     'timestamp': time.time(),
                     'mark_price': data['mark_price']
                 })
 
                 # Limiter la taille de la liste
-                if len(cached_data) > data_window:
-                    cached_data.pop(0)
+                if len(cached_prices) > data_window:
+                    cached_prices.pop(0)
 
-                # Mettre à jour le cache
-                st.session_state.data_list[asset] = cached_data
+                # Mettre à jour dans `st.session_state`
+                st.session_state.data_list[asset] = cached_prices
 
-                # Vérification de l'intervalle pour calculer la volatilité
+                # Vérification de l'intervalle de temps pour calculer la volatilité
                 if time.time() - last_volatility_calc_time >= time_between_predictions:
-                    appliquer_modele_ewma(asset, cached_data)
+                    appliquer_modele_ewma(asset, cached_prices)
                     update_chart()
                     last_volatility_calc_time = time.time()
 
