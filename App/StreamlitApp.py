@@ -78,19 +78,30 @@ volatility_data = {asset: [] for asset in selected_assets}
 collecte_terminee = False  
 last_volatility_calc_time = time.time() - 3 
 
+# Initialisation de `st.session_state` si non défini
+if "volatility_data" not in st.session_state:
+    st.session_state.volatility_data = {}
+if "data_list" not in st.session_state:
+    st.session_state.data_list = {}
+
 status_placeholder = st.container()
 
-
-
+# Affichage du suivi
 with status_placeholder:
     st.subheader("Suivi des données et calculs de volatilité")
     data_status = {asset: st.empty() for asset in selected_assets}
 
+
 # Fonctions utilitaires
 def get_cached_volatility_data(asset):
+    """Récupère les données en cache pour un actif donné, initialise si non défini."""
+    if "volatility_data" not in st.session_state:
+        st.session_state.volatility_data = {}
     return st.session_state.volatility_data.get(asset, [])
 
+
 def update_chart():
+    """Mise à jour du graphique basé sur les données de volatilité."""
     with chart_placeholder:
         fig = go.Figure()
         for asset in selected_assets:
@@ -117,6 +128,7 @@ def update_chart():
 
 
 def appliquer_modele_ewma(asset, data, lambda_factor=0.94):
+    """Applique le modèle EWMA pour calculer la volatilité."""
     prices = pd.Series([item['mark_price'] for item in data])
     if len(prices) < 100:
         data_status[asset].write(f"{asset} : Données actuelles = {len(prices)}, en attente de 100.")
@@ -134,6 +146,57 @@ def appliquer_modele_ewma(asset, data, lambda_factor=0.94):
     st.session_state.volatility_data[asset].append({'timestamp': timestamp, 'volatility': volatility})
     data_status[asset].write(f"{asset} : Volatilité actuelle = {volatility:.6f}")
     return volatility
+
+
+def on_message(ws, message):
+    """Gestion des messages reçus via WebSocket."""
+    global collecte_terminee, subscribed_channels, last_volatility_calc_time
+
+    response = json.loads(message)
+
+    # Vérification de l'authentification réussie
+    if 'result' in response and 'id' in response and response['id'] == 9929:
+        for asset in selected_assets:
+            channel_ticker = f"ticker.{asset}.raw"
+            if channel_ticker not in subscribed_channels:
+                subscribe_message = {
+                    "jsonrpc": "2.0",
+                    "method": "public/subscribe",
+                    "params": {
+                        "channels": [channel_ticker]
+                    },
+                    "id": 43
+                }
+                ws.send(json.dumps(subscribe_message))
+                subscribed_channels.add(channel_ticker)
+
+    # Gestion des données de prix reçues
+    if 'params' in response and 'data' in response['params']:
+        data = response['params']['data']
+        if 'mark_price' in data:
+            asset = response['params']['channel'].split('.')[1]
+            if asset in selected_assets:
+                cached_data = get_cached_volatility_data(asset)
+
+                # Ajouter les données
+                cached_data.append({
+                    'timestamp': time.time(),
+                    'mark_price': data['mark_price']
+                })
+
+                # Limiter la taille de la liste
+                if len(cached_data) > data_window:
+                    cached_data.pop(0)
+
+                # Mettre à jour le cache
+                st.session_state.data_list[asset] = cached_data
+
+                # Vérification de l'intervalle pour calculer la volatilité
+                if time.time() - last_volatility_calc_time >= time_between_predictions:
+                    appliquer_modele_ewma(asset, cached_data)
+                    update_chart()
+                    last_volatility_calc_time = time.time()
+
 
 
 
@@ -196,72 +259,6 @@ def envoyer_email_rapport_volatilites(volatility_data):
         print(f"Erreur lors de l'envoi de l'email : {e}")
 
 
-def on_message(ws, message):
-    global collecte_terminee, subscribed_channels, last_volatility_calc_time
-
-    response = json.loads(message)
-    print("Message reçu :")
-    print(json.dumps(response, indent=4))
-
-    # Authentification réussie
-    if 'result' in response and 'id' in response and response['id'] == 9929:
-        print("Authentification réussie, souscription aux canaux...")
-
-        # Souscription aux canaux pour chaque actif sélectionné
-        for asset in selected_assets:
-            channel_ticker = f"ticker.{asset}.raw"
-            if channel_ticker not in subscribed_channels:
-                subscribe_message = {
-                    "jsonrpc": "2.0",
-                    "method": "public/subscribe",
-                    "params": {
-                        "channels": [channel_ticker]
-                    },
-                    "id": 43
-                }
-                ws.send(json.dumps(subscribe_message))
-                subscribed_channels.add(channel_ticker)
-                print(f"Souscrit au canal {channel_ticker}")
-
-    # Vérification de la réception des données
-    if 'params' in response and 'data' in response['params']:
-        data = response['params']['data']
-
-        # Affichage des données reçues pour chaque actif, si elles contiennent mark_price
-        if 'mark_price' in data:
-            asset = response['params']['channel'].split('.')[1]  # Extraction de l'actif du nom du canal
-            if asset in selected_assets:
-                print(f"Données de prix reçues pour {asset}: {data['mark_price']}")
-
-                # Récupérer les données mises en cache pour cet actif
-                cached_data = get_cached_volatility_data(asset)
-                print(f"---------------------------------------- {cached_data}")
-                # Ajout des nouvelles données de prix
-                cached_data.append({
-                    'timestamp': time.time(),
-                    'mark_price': data['mark_price']
-                })
-                print(f"Données ajoutées pour {asset} : {cached_data[-1]}")
-
-                # Limite de la fenêtre de données pour l'actif (éviter les débordements)
-                if len(cached_data) > data_window:
-                    cached_data.pop(0)
-
-                # Mettre à jour les données dans `st.session_state`
-                st.session_state.data_list[asset] = cached_data
-
-                # Vérification de l'intervalle de temps entre les prédictions
-                if time.time() - last_volatility_calc_time >= time_between_predictions:
-                    # Appliquer le modèle EWMA à l'actif avec les données collectées
-                    appliquer_modele_ewma(asset, cached_data)
-                    # Mettre à jour le graphique après le calcul de la volatilité
-                    update_chart()
-                    # Mettre à jour le temps de la dernière prédiction
-                    last_volatility_calc_time = time.time()
-            else:
-                print(f"Aucun traitement prévu pour cet actif : {asset}")
-        else:
-            print("Données reçues sans prix de marché (mark_price). Ignorées.")
 
 
 def on_open(ws):
