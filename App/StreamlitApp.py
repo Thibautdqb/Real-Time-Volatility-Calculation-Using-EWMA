@@ -93,14 +93,24 @@ with status_placeholder:
     st.subheader("Suivi des données et calculs de volatilité")
     data_status = {asset: st.empty() for asset in selected_assets}
 
-if "app_initialized" not in st.session_state:
-    reset_session_state()  # Réinitialiser les données
-    st.session_state.app_initialized = True  # Marquer l'application comme initialisée
 
 def reset_session_state():
     """Réinitialise les espaces de stockage dans st.session_state."""
     st.session_state.data_list = {asset: [] for asset in selected_assets}
     st.session_state.volatility_data = {asset: [] for asset in selected_assets}
+
+# Initialisation des espaces dans st.session_state au démarrage
+if "app_initialized" not in st.session_state:
+    # Réinitialisation des données
+    reset_session_state()
+    # Marquer l'application comme initialisée
+    st.session_state.app_initialized = True
+
+
+
+
+
+
 
 
 
