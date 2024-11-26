@@ -76,6 +76,7 @@ subscribed_channels = set()
 collecte_terminee = False  
 last_volatility_calc_time = time.time() - 3 
 # Initialisation des espaces dans `st.session_state` si non définis
+# Initialisation des espaces dans `st.session_state` si non définis
 if "data_list" not in st.session_state:
     st.session_state.data_list = {asset: [] for asset in selected_assets}
 if "volatility_data" not in st.session_state:
@@ -189,6 +190,7 @@ def on_message(ws, message):
                     appliquer_modele_ewma(asset, cached_prices)
                     update_chart()
                     last_volatility_calc_time = time.time()
+
 
 
 
