@@ -179,8 +179,6 @@ def appliquer_modele_ewma(asset, price_data, lambda_factor=0.94):
     data_status[asset].write(f"{asset} : Volatilité actuelle = {volatility:.6f}")
     return volatility
 
-
-# Gestion des messages reçus via WebSocket
 def on_message(ws, message):
     """Gère les messages reçus via WebSocket et traite les données en temps réel."""
     global last_volatility_calc_time
@@ -190,6 +188,13 @@ def on_message(ws, message):
 
     # Log : Réponse brute reçue
     print(f"Message reçu : {json.dumps(response, indent=4)}")
+
+    # Gestion des messages d'authentification
+    if 'id' in response and 'result' in response:
+        print("Message d'authentification reçu ou autre réponse.")
+        if response['id'] == 9929:  # ID correspondant à l'authentification
+            print("Authentification réussie.")
+        return  # Ne rien faire d'autre avec ces messages
 
     # Vérifier si les données contiennent des informations pertinentes
     if 'params' in response and 'data' in response['params']:
@@ -251,6 +256,7 @@ def on_message(ws, message):
             print("Aucun prix marqué trouvé dans les données reçues. Ignoré.")
     else:
         print("Structure de données inattendue dans le message. Ignoré.")
+
 
 
 
