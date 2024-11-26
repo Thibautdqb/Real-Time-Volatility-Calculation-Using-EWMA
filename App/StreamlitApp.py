@@ -352,15 +352,23 @@ def on_error(ws, error):
 reconnection_attempts = 0
 
 def on_close(ws, close_status_code, close_msg):
+    """Gestion de la fermeture de la connexion WebSocket."""
     global reconnection_attempts
     print(f"Connexion fermée : Code {close_status_code}, Message : {close_msg}")
-    if reconnection_attempts < 5:  # Limite à 5 tentatives
+    
+    if close_status_code == 1000:
+        print("Connexion fermée volontairement.")
+        return
+
+    if reconnection_attempts < 10:  # Limite des tentatives de reconnexion
+        delay = min(2 ** reconnection_attempts, 60)  # Exponential backoff avec un maximum de 60 secondes
+        print(f"Tentative de reconnexion dans {delay} secondes...")
+        time.sleep(delay)
         reconnection_attempts += 1
-        print("Tentative de reconnexion dans 5 secondes...")
-        time.sleep(5)
         ws.run_forever()
     else:
-        print("Nombre de tentatives de reconnexion atteint. Veuillez vérifier votre connexion.")
+        print("Nombre maximal de tentatives de reconnexion atteint. Arrêt.")
+
 
 
 
