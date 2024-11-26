@@ -87,7 +87,6 @@ with status_placeholder:
     data_status = {asset: st.empty() for asset in selected_assets}
 
 # Fonctions utilitaires
-@st.cache_data
 def get_cached_volatility_data(asset):
     return st.session_state.volatility_data.get(asset, [])
 
