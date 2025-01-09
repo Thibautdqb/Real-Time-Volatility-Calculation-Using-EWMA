@@ -130,11 +130,11 @@ def get_cached_price_data(asset):
     return st.session_state.data_list[asset]
 
 
-# Mise à jour du graphique en fonction des données de volatilité
 def update_chart():
     """Met à jour le graphique en fonction des données de volatilité."""
     with chart_placeholder:
         fig = go.Figure()
+        
         for asset in selected_assets:
             cached_volatility = get_cached_volatility_data(asset)
             if len(cached_volatility) > 0:
@@ -146,6 +146,7 @@ def update_chart():
                     mode='lines',
                     name=f'Volatility (EWMA) - {asset}'
                 ))
+
         if len(fig.data) > 0:
             fig.update_layout(
                 title="Estimated volatility (EWMA) in real time for selected assets",
@@ -153,9 +154,11 @@ def update_chart():
                 yaxis_title="Volatility",
                 template="plotly_dark"
             )
-            st.plotly_chart(fig, use_container_width=True)
+            # Mettre à jour le graphique existant
+            chart_placeholder.plotly_chart(fig, use_container_width=True)
         else:
             st.write("No data available to display for the selected assets.")
+
 
 
 # Calcul de la volatilité avec le modèle EWMA
