@@ -134,7 +134,8 @@ def update_chart():
     """Met à jour le graphique en fonction des données de volatilité."""
     with chart_placeholder:
         fig = go.Figure()
-        
+
+        # Ajout des traces de volatilité pour chaque actif
         for asset in selected_assets:
             cached_volatility = get_cached_volatility_data(asset)
             if len(cached_volatility) > 0:
@@ -147,6 +148,7 @@ def update_chart():
                     name=f'Volatility (EWMA) - {asset}'
                 ))
 
+        # Vérifie si des traces ont été ajoutées
         if len(fig.data) > 0:
             fig.update_layout(
                 title="Estimated volatility (EWMA) in real time for selected assets",
@@ -154,10 +156,11 @@ def update_chart():
                 yaxis_title="Volatility",
                 template="plotly_dark"
             )
-            # Mettre à jour le graphique existant
+            # Met à jour le graphique dans le même container (ne recrée pas un nouveau graphique)
             chart_placeholder.plotly_chart(fig, use_container_width=True)
         else:
             st.write("No data available to display for the selected assets.")
+
 
 
 
