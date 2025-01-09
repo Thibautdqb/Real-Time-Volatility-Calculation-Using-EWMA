@@ -90,7 +90,7 @@ if "volatility_data" not in st.session_state:
 status_placeholder = st.container()
 
 with status_placeholder:
-    st.subheader("Suivi des données et calculs de volatilité")
+    st.subheader("Suivi des données et calculs de volatilité")    
     data_status = {asset: st.empty() for asset in selected_assets}
 
 
@@ -129,37 +129,33 @@ def get_cached_price_data(asset):
         st.session_state.data_list[asset] = []
     return st.session_state.data_list[asset]
 
-
 def update_chart():
     """Met à jour le graphique en fonction des données de volatilité."""
-    with chart_placeholder:
-        fig = go.Figure()
+    fig = go.Figure()
 
-        # Ajout des traces de volatilité pour chaque actif
-        for asset in selected_assets:
-            cached_volatility = get_cached_volatility_data(asset)
-            if len(cached_volatility) > 0:
-                df = pd.DataFrame(cached_volatility)
-                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
-                fig.add_trace(go.Scatter(
-                    x=df['timestamp'],
-                    y=df['volatility'],
-                    mode='lines',
-                    name=f'Volatility (EWMA) - {asset}'
-                ))
+    for asset in selected_assets:
+        cached_volatility = get_cached_volatility_data(asset)
+        if len(cached_volatility) > 0:
+            df = pd.DataFrame(cached_volatility)
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
+            fig.add_trace(go.Scatter(
+                x=df['timestamp'],
+                y=df['volatility'],
+                mode='lines',
+                name=f'Volatility (EWMA) - {asset}'
+            ))
 
-        # Vérifie si des traces ont été ajoutées
-        if len(fig.data) > 0:
-            fig.update_layout(
-                title="Estimated volatility (EWMA) in real time for selected assets",
-                xaxis_title="Time",
-                yaxis_title="Volatility",
-                template="plotly_dark"
-            )
-            # Met à jour le graphique dans le même container (ne recrée pas un nouveau graphique)
-            chart_placeholder.plotly_chart(fig, use_container_width=True)
-        else:
-            st.write("No data available to display for the selected assets.")
+    if len(fig.data) > 0:
+        fig.update_layout(
+            title="Estimated volatility (EWMA) in real time for selected assets",
+            xaxis_title="Time",
+            yaxis_title="Volatility",
+            template="plotly_dark"
+        )
+        # Mettre à jour le graphique dans le même espace réservé
+        chart_placeholder.plotly_chart(fig, use_container_width=True)
+    else:
+        chart_placeholder.write("No data available to display for the selected assets.")
 
 
 
