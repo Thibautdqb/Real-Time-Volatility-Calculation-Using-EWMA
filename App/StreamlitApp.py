@@ -529,24 +529,23 @@ def augmenter_resolution_historique(historique_data, interval_seconds):
 
 
 if __name__ == "__main__":
+    # Traiter les données historiques pour chaque actif sélectionné
     for asset in selected_assets:
         historique_data = charger_donnees_tick_deribit(asset)
         if historique_data:
             historique_data = augmenter_resolution_historique(historique_data, int(time_between_predictions))
-            
             # Afficher les données interpolées pour vérifier
             st.write(f"Données interpolées pour {asset} (intervalle : {time_between_predictions} secondes):")
             st.dataframe(pd.DataFrame(historique_data))
             
+            # Calculer la volatilité initiale
             calculer_volatilite_initiale(asset, historique_data)
         else:
             st.warning(f"Pas de données historiques pour l'actif {asset}.")
-
-
-
     
-    # Mise à jour du graphique avec les données historiques
-    update_chart()  # Affiche le graphique dès le démarrage
+    # Mise à jour du graphique une seule fois après le traitement de toutes les données
+    update_chart()  # Affiche le graphique après avoir traité tous les actifs
+
 
     # Lancement de la connexion WebSocket pour la collecte de données en temps réel
     ws = websocket.WebSocketApp(
