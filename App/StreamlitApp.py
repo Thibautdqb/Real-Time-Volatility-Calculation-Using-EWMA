@@ -13,6 +13,9 @@ import matplotlib.pyplot as plt
 import plotly.graph_objs as go
 import requests
 
+
+
+
 # Configuration de la page Streamlit
 st.set_page_config(
     page_title="Volatility Analysis Multi-Assets",  
@@ -34,15 +37,30 @@ if "chart_fig" not in st.session_state:
     st.session_state.chart_fig = go.Figure()
 if "last_chart_update" not in st.session_state:
     st.session_state.last_chart_update = 0
-    
+
 # Barre latérale pour la sélection du stock/actif
 st.sidebar.title("Volatility Analysis Settings")
+
 # Sélection de plusieurs actifs pour comparaison
 
 selected_assets = st.sidebar.multiselect(
         "Choose the cryptocurrencies:",
         ["BTC-PERPETUAL", "ETH-PERPETUAL", "SOL-PERPETUAL", "ADA-PERPETUAL", "AVAX-PERPETUAL"]
     )
+data_window = st.sidebar.number_input(
+    "Data window size (number of data points):", min_value=50, max_value=500, value=100, step=10
+)
+update_interval = st.sidebar.number_input(
+    "Time interval between updates (in seconds):", min_value=0.1, max_value=60.0, value=10.0, step=0.1
+)
+# Placeholder pour le graphique
+chart_placeholder = st.empty()
+# Placeholder pour le statut des données
+status_placeholder = st.container()
+with status_placeholder:
+    st.subheader("Data and Volatility Status")
+    data_status = {asset: st.empty() for asset in selected_assets}
+
 # Champs de saisie pour l'email, la fenêtre de données, et l'intervalle de prédiction dans la sidebar
 to_email = st.sidebar.text_input("Enter your email address to receive reports:")
 data_window = st.sidebar.number_input("Enter the data window size (number of data points):", min_value=50, max_value=500, value=100, step=10)
@@ -52,24 +70,21 @@ time_between_predictions = st.sidebar.number_input("Time interval between predic
 st.title(f"Real-time volatility (EWMA) for selected assets")
 st.write(f"This Streamlit application enables you to track the volatility of multiple assets in real time, calculated instantly from market data transmitted via WebSocket. An interactive graph continuously illustrates changes in the volatility of these assets. When 100 real-time estimates are collected, a full report is automatically sent by e-mail.")
 
-# Placeholder pour le graphique
-chart_placeholder = st.empty()
-# Placeholder pour le statut des données
-status_placeholder = st.container()
-with status_placeholder:
-    st.subheader("Data and Volatility Status")
-    data_status = {asset: st.empty() for asset in selected_assets}
+
 
 if not to_email:
     st.warning("Please enter your email address to receive the volatility reports.")
     st.stop()
 status_placeholder = st.container()
 progress_bar = st.progress(0)
+
+
 # URL du WebSocket Deribit (environnement de test ou production)
 DERIBIT_WS_URL = "wss://test.deribit.com/ws/api/v2"
 
 # Variables pour stocker les données par actif
 subscribed_channels = set()
+
 collecte_terminee = False  
 last_volatility_calc_time = time.time() - 3 
 # Initialisation des espaces dans `st.session_state` si non définis
@@ -80,11 +95,17 @@ if "volatility_data" not in st.session_state:
     st.session_state.volatility_data = {asset: [] for asset in selected_assets}
 
 
+
+
+
 # Placeholders et gestion de l'interface utilisateur
 status_placeholder = st.container()
+
 with status_placeholder:
     st.subheader("Suivi des données et calculs de volatilité")    
     data_status = {asset: st.empty() for asset in selected_assets}
+
+
 def reset_session_state():
     """Réinitialise les espaces de stockage dans st.session_state."""
     st.session_state.data_list = {asset: [] for asset in selected_assets}
@@ -96,6 +117,7 @@ if "app_initialized" not in st.session_state:
     reset_session_state()
     # Marquer l'application comme initialisée
     st.session_state.app_initialized = True
+
 
 
 
@@ -123,7 +145,7 @@ def get_cached_price_data(asset):
 def update_chart():
     """Met à jour le graphique en ajoutant les nouvelles données sans créer de doublons."""
     current_time = time.time()
-    if current_time - st.session_state["last_chart_update"] < time_between_predictions:
+    if current_time - st.session_state["last_chart_update"] < update_interval:
         return  # Respectez l'intervalle minimal entre les mises à jour
 
     fig = st.session_state["chart_fig"]
