@@ -121,7 +121,7 @@ def get_cached_price_data(asset):
 def update_chart():
     """Met à jour le graphique en ajoutant les nouvelles données sans créer de doublons."""
     current_time = time.time()
-    if current_time - st.session_state["last_chart_update"] < update_interval:
+    if current_time - st.session_state["last_chart_update"] < time_between_predictions:
         return  # Respectez l'intervalle minimal entre les mises à jour
 
     fig = st.session_state["chart_fig"]
