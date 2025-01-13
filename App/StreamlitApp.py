@@ -129,33 +129,42 @@ def get_cached_price_data(asset):
         st.session_state.data_list[asset] = []
     return st.session_state.data_list[asset]
 
+# Fonction pour mettre à jour le graphique
 def update_chart():
-    """Met à jour le graphique en fonction des données de volatilité."""
-    fig = go.Figure()
+    current_time = time.time()
+    # Ne mettez pas à jour trop fréquemment
+    if current_time - st.session_state.last_chart_update < update_interval:
+        return
+
+    fig = st.session_state.chart_fig
 
     for asset in selected_assets:
         cached_volatility = get_cached_volatility_data(asset)
         if len(cached_volatility) > 0:
             df = pd.DataFrame(cached_volatility)
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
-            fig.add_trace(go.Scatter(
-                x=df['timestamp'],
-                y=df['volatility'],
-                mode='lines',
-                name=f'Volatility (EWMA) - {asset}'
-            ))
 
-    if len(fig.data) > 0:
-        fig.update_layout(
-            title="Estimated volatility (EWMA) in real time for selected assets",
-            xaxis_title="Time",
-            yaxis_title="Volatility",
-            template="plotly_dark"
-        )
-        # Mettre à jour le graphique dans le même espace réservé
-        chart_placeholder.plotly_chart(fig, use_container_width=True)
-    else:
-        chart_placeholder.write("No data available to display for the selected assets.")
+            if asset not in [trace.name for trace in fig.data]:
+                fig.add_trace(go.Scatter(
+                    x=df['timestamp'],
+                    y=df['volatility'],
+                    mode='lines',
+                    name=f'Volatility (EWMA) - {asset}'
+                ))
+            else:
+                trace_index = [trace.name for trace in fig.data].index(f'Volatility (EWMA) - {asset}')
+                fig.data[trace_index].x = df['timestamp']
+                fig.data[trace_index].y = df['volatility']
+
+    fig.update_layout(
+        title="Estimated volatility (EWMA) in real time for selected assets",
+        xaxis_title="Time",
+        yaxis_title="Volatility",
+        template="plotly_dark"
+    )
+    st.session_state.chart_fig = fig
+    chart_placeholder.plotly_chart(fig, use_container_width=True)
+    st.session_state.last_chart_update = current_time
 
 
 
