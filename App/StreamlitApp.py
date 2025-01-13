@@ -147,12 +147,12 @@ def get_cached_price_data(asset):
 
 # Fonction pour mettre à jour le graphique
 def update_chart():
+    """Met à jour le graphique en ajoutant les nouvelles données sans créer de doublons."""
     current_time = time.time()
-    # Ne mettez pas à jour trop fréquemment
-    if current_time - st.session_state.last_chart_update < update_interval:
-        return
+    if current_time - st.session_state["last_chart_update"] < update_interval:
+        return  # Respectez l'intervalle minimal entre les mises à jour
 
-    fig = st.session_state.chart_fig
+    fig = st.session_state["chart_fig"]
 
     for asset in selected_assets:
         cached_volatility = get_cached_volatility_data(asset)
@@ -160,17 +160,21 @@ def update_chart():
             df = pd.DataFrame(cached_volatility)
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
 
-            if asset not in [trace.name for trace in fig.data]:
+            # Vérifiez si la trace existe déjà
+            existing_trace_names = [trace.name for trace in fig.data]
+            if f'Volatility (EWMA) - {asset}' in existing_trace_names:
+                # Mettez à jour la trace existante
+                trace_index = existing_trace_names.index(f'Volatility (EWMA) - {asset}')
+                fig.data[trace_index].x = df['timestamp']
+                fig.data[trace_index].y = df['volatility']
+            else:
+                # Ajoutez une nouvelle trace si elle n'existe pas
                 fig.add_trace(go.Scatter(
                     x=df['timestamp'],
                     y=df['volatility'],
                     mode='lines',
                     name=f'Volatility (EWMA) - {asset}'
                 ))
-            else:
-                trace_index = [trace.name for trace in fig.data].index(f'Volatility (EWMA) - {asset}')
-                fig.data[trace_index].x = df['timestamp']
-                fig.data[trace_index].y = df['volatility']
 
     fig.update_layout(
         title="Estimated volatility (EWMA) in real time for selected assets",
@@ -178,10 +182,10 @@ def update_chart():
         yaxis_title="Volatility",
         template="plotly_dark"
     )
-    st.session_state.chart_fig = fig
-    chart_placeholder.plotly_chart(fig, use_container_width=True)
-    st.session_state.last_chart_update = current_time
 
+    st.session_state["chart_fig"] = fig  # Sauvegardez le graphique mis à jour dans st.session_state
+    chart_placeholder.plotly_chart(fig, use_container_width=True)
+    st.session_state["last_chart_update"] = current_time
 
 
 
