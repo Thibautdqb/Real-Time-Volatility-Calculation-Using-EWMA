@@ -37,7 +37,7 @@ if "last_chart_update" not in st.session_state:
     st.session_state.last_chart_update = 0
 if "selected_assets" not in st.session_state:
     st.session_state.selected_assets = []
-
+subscribed_channels = set()
 # Barre latérale pour la configuration
 st.sidebar.title("Volatility Analysis Settings")
 selected_assets = st.sidebar.multiselect(
