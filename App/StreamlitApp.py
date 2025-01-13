@@ -8,27 +8,25 @@ import time
 import pandas as pd
 from arch import arch_model
 import numpy as np
-import streamlit as st 
-import matplotlib.pyplot as plt
+import streamlit as st
 import plotly.graph_objs as go
 import requests
-
-
-
+import re  # Pour valider l'email
 
 # Configuration de la page Streamlit
 st.set_page_config(
-    page_title="Volatility Analysis Multi-Assets",  
-    page_icon="📊",  
-    layout="wide",  
-    initial_sidebar_state="expanded",  
+    page_title="Volatility Analysis Multi-Assets",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
     menu_items={
-        'Get Help': 'https://www.example.com/help',  
-        'Report a bug': 'https://www.example.com/bug',  
+        'Get Help': 'https://www.example.com/help',
+        'Report a bug': 'https://www.example.com/bug',
         'About': "# Analyse en temps réel de la volatilité de plusieurs actifs\nCette application analyse la volatilité de plusieurs actifs en temps réel à l'aide du modèle EWMA."
     }
 )
-# Initialisation de `st.session_state` pour stocker les données
+
+# Initialisation de `st.session_state`
 if "volatility_data" not in st.session_state:
     st.session_state.volatility_data = {}
 if "data_list" not in st.session_state:
@@ -37,81 +35,70 @@ if "chart_fig" not in st.session_state:
     st.session_state.chart_fig = go.Figure()
 if "last_chart_update" not in st.session_state:
     st.session_state.last_chart_update = 0
-    
-# Barre latérale pour la sélection du stock/actif
+if "selected_assets" not in st.session_state:
+    st.session_state.selected_assets = []
+
+# Barre latérale pour la configuration
 st.sidebar.title("Volatility Analysis Settings")
-
-# Sélection de plusieurs actifs pour comparaison
-
 selected_assets = st.sidebar.multiselect(
-        "Choose the cryptocurrencies:",
-        ["BTC-PERPETUAL", "ETH-PERPETUAL", "SOL-PERPETUAL", "ADA-PERPETUAL", "AVAX-PERPETUAL"]
-    )
-
-# Champs de saisie pour l'email, la fenêtre de données, et l'intervalle de prédiction dans la sidebar
+    "Choose the cryptocurrencies:",
+    ["BTC-PERPETUAL", "ETH-PERPETUAL", "SOL-PERPETUAL", "ADA-PERPETUAL", "AVAX-PERPETUAL"]
+)
+data_window = st.sidebar.number_input(
+    "Data window size (number of data points):", min_value=50, max_value=500, value=100, step=10
+)
+time_between_predictions = st.sidebar.number_input(
+    "Time interval between predictions (in seconds):", min_value=0.1, max_value=60.0, value=10.0, step=0.1
+)
 to_email = st.sidebar.text_input("Enter your email address to receive reports:")
-data_window = st.sidebar.number_input("Enter the data window size (number of data points):", min_value=50, max_value=500, value=100, step=10)
-time_between_predictions = st.sidebar.number_input("Time interval between predictions (in seconds):", min_value=0.1, max_value=60.0, value=10.0, step=0.1)
 
-# Titre et description de l'application
+# Validation des entrées utilisateur
+if not selected_assets:
+    st.warning("Please select at least one asset to proceed.")
+    st.stop()
+
+if not re.match(r"[^@]+@[^@]+\.[^@]+", to_email):
+    st.error("Please enter a valid email address.")
+    st.stop()
+
+# Titre principal
 st.title(f"Real-time volatility (EWMA) for selected assets")
-st.write(f"This Streamlit application enables you to track the volatility of multiple assets in real time, calculated instantly from market data transmitted via WebSocket. An interactive graph continuously illustrates changes in the volatility of these assets. When 100 real-time estimates are collected, a full report is automatically sent by e-mail.")
+st.write(
+    f"This Streamlit application enables you to track the volatility of multiple assets in real time, "
+    f"calculated instantly from market data transmitted via WebSocket. An interactive graph continuously illustrates "
+    f"changes in the volatility of these assets. When 100 real-time estimates are collected, a full report is "
+    f"automatically sent by e-mail."
+)
 
-# Placeholder pour le graphique
+# Placeholder pour le graphique et les statuts
 chart_placeholder = st.empty()
-
-# Placeholder pour le statut des données
 status_placeholder = st.container()
 with status_placeholder:
     st.subheader("Data and Volatility Status")
     data_status = {asset: st.empty() for asset in selected_assets}
 
-if not to_email:
-    st.warning("Please enter your email address to receive the volatility reports.")
-    st.stop()
-status_placeholder = st.container()
-progress_bar = st.progress(0)
-
-
-# URL du WebSocket Deribit (environnement de test ou production)
+# URL du WebSocket Deribit
 DERIBIT_WS_URL = "wss://test.deribit.com/ws/api/v2"
 
-# Variables pour stocker les données par actif
-subscribed_channels = set()
-
-collecte_terminee = False  
-last_volatility_calc_time = time.time() - 3 
-# Initialisation des espaces dans `st.session_state` si non définis
-# Initialisation des espaces dans `st.session_state` si non définis
-if "data_list" not in st.session_state:
+# Gestion des données sélectionnées
+if st.session_state.selected_assets != selected_assets:
+    st.session_state.selected_assets = selected_assets
     st.session_state.data_list = {asset: [] for asset in selected_assets}
-if "volatility_data" not in st.session_state:
     st.session_state.volatility_data = {asset: [] for asset in selected_assets}
 
+# Progression
+progress_bar = st.progress(0)
 
-
-
-
-# Placeholders et gestion de l'interface utilisateur
-status_placeholder = st.container()
-
-with status_placeholder:
-    st.subheader("Suivi des données et calculs de volatilité")    
-    data_status = {asset: st.empty() for asset in selected_assets}
-
-
+# Fonction pour réinitialiser les données
 def reset_session_state():
     """Réinitialise les espaces de stockage dans st.session_state."""
-    st.session_state.data_list = {asset: [] for asset in selected_assets}
-    st.session_state.volatility_data = {asset: [] for asset in selected_assets}
+    st.session_state.data_list = {asset: [] for asset in st.session_state.selected_assets}
+    st.session_state.volatility_data = {asset: [] for asset in st.session_state.selected_assets}
 
-# Initialisation des espaces dans st.session_state au démarrage
+# Vérification si l'application est initialisée
 if "app_initialized" not in st.session_state:
-    # Réinitialisation des données
     reset_session_state()
-    # Marquer l'application comme initialisée
     st.session_state.app_initialized = True
-
 
 
 
