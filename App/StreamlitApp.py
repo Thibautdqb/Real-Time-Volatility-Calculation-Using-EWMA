@@ -33,6 +33,8 @@ if "volatility_data" not in st.session_state:
     st.session_state.volatility_data = {}
 if "data_list" not in st.session_state:
     st.session_state.data_list = {}
+if "chart_fig" not in st.session_state:
+    st.session_state.chart_fig = go.Figure()
 if "last_chart_update" not in st.session_state:
     st.session_state.last_chart_update = 0
     
