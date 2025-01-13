@@ -92,9 +92,10 @@ if "volatility_data" not in st.session_state:
 
 
 def reset_session_state():
-    """Réinitialise les espaces de stockage dans st.session_state."""
-    st.session_state.data_list = {asset: [] for asset in selected_assets}
-    st.session_state.volatility_data = {asset: [] for asset in selected_assets}
+    if "volatility_data" not in st.session_state:
+        st.session_state.volatility_data = {asset: [] for asset in selected_assets}
+    if "data_list" not in st.session_state:
+        st.session_state.data_list = {asset: [] for asset in selected_assets}
 
 # Initialisation des espaces dans st.session_state au démarrage
 if "app_initialized" not in st.session_state:
