@@ -123,45 +123,58 @@ def get_cached_price_data(asset):
 
 # Fonction pour mettre à jour le graphique
 def update_chart():
-    """Met à jour le graphique en ajoutant les nouvelles données sans créer de doublons."""
+    """
+    Met à jour le graphique en ajoutant les nouvelles données sans créer de doublons.
+    Cette version utilise un index pour les traces et optimise les mises à jour incrémentielles.
+    """
     current_time = time.time()
+
+    # Respecter l'intervalle minimal entre les mises à jour
     if current_time - st.session_state["last_chart_update"] < time_between_predictions:
-        return  # Respectez l'intervalle minimal entre les mises à jour
+        return
 
     fig = st.session_state["chart_fig"]
 
+    # Créer un index des noms des traces existantes pour des recherches rapides
+    existing_traces = {trace.name: i for i, trace in enumerate(fig.data)}
+    updated = False  # Indicateur de modification
+
     for asset in selected_assets:
+        # Récupérer les données de volatilité en cache pour l'actif
         cached_volatility = get_cached_volatility_data(asset)
+
         if len(cached_volatility) > 0:
+            # Convertir les données en DataFrame pour le traitement
             df = pd.DataFrame(cached_volatility)
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
+            trace_name = f'Volatility (EWMA) - {asset}'
 
-            # Vérifiez si la trace existe déjà
-            existing_trace_names = [trace.name for trace in fig.data]
-            if f'Volatility (EWMA) - {asset}' in existing_trace_names:
-                # Mettez à jour la trace existante
-                trace_index = existing_trace_names.index(f'Volatility (EWMA) - {asset}')
+            if trace_name in existing_traces:
+                # Mise à jour de la trace existante
+                trace_index = existing_traces[trace_name]
                 fig.data[trace_index].x = df['timestamp']
                 fig.data[trace_index].y = df['volatility']
             else:
-                # Ajoutez une nouvelle trace si elle n'existe pas
+                # Ajout d'une nouvelle trace si elle n'existe pas
                 fig.add_trace(go.Scatter(
                     x=df['timestamp'],
                     y=df['volatility'],
                     mode='lines',
-                    name=f'Volatility (EWMA) - {asset}'
+                    name=trace_name
                 ))
+            updated = True
 
-    fig.update_layout(
-        title="Estimated volatility (EWMA) in real time for selected assets",
-        xaxis_title="Time",
-        yaxis_title="Volatility",
-        template="plotly_dark"
-    )
-
-    st.session_state["chart_fig"] = fig  # Sauvegardez le graphique mis à jour dans st.session_state
-    chart_placeholder.plotly_chart(fig, use_container_width=True)
-    st.session_state["last_chart_update"] = current_time
+    # Appliquer les mises à jour si le graphique a été modifié
+    if updated:
+        fig.update_layout(
+            title="Estimated volatility (EWMA) in real time for selected assets",
+            xaxis_title="Time",
+            yaxis_title="Volatility",
+            template="plotly_dark"
+        )
+        st.session_state["chart_fig"] = fig  # Sauvegarder le graphique mis à jour dans st.session_state
+        chart_placeholder.plotly_chart(fig, use_container_width=True)
+        st.session_state["last_chart_update"] = current_time
 
 
 
