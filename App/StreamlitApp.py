@@ -165,25 +165,20 @@ def update_chart():
 
 
 
-# Calcul de la volatilité avec le modèle EWMA
 def appliquer_modele_ewma(asset, price_data, lambda_factor=0.94):
-    """Calcule la volatilité à l'aide du modèle EWMA."""
     prices = pd.Series([item['mark_price'] for item in price_data])
-    if len(prices) < 100:
-        data_status[asset].write(f"{asset} : Données actuelles = {len(prices)}, en attente de 100.")
+    if len(prices) < 2:
         return None
-
     returns = np.log(prices / prices.shift(1)).dropna()
-    variance = returns.var()
-    for r in returns:
-        variance = lambda_factor * variance + (1 - lambda_factor) * (r ** 2)
 
+    # Démarrage avec la dernière variance stockée
+    variance = st.session_state.get(f"{asset}_last_variance", returns.var())
+    for r in returns:
+        variance = lambda_factor * variance + (1 - lambda_factor) * r ** 2
+    st.session_state[f"{asset}_last_variance"] = variance  # Sauvegarde
     volatility = np.sqrt(variance)
     timestamp = time.time()
-    cached_volatility = get_cached_volatility_data(asset)
-    cached_volatility.append({'timestamp': timestamp, 'volatility': volatility})
-    st.session_state.volatility_data[asset] = cached_volatility
-    data_status[asset].write(f"{asset} : Volatilité actuelle = {volatility:.6f}")
+    get_cached_volatility_data(asset).append({'timestamp': timestamp, 'volatility': volatility})
     return volatility
 
 def on_message(ws, message):
