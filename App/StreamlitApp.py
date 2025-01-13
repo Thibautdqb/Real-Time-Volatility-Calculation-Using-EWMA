@@ -8,167 +8,86 @@ import time
 import pandas as pd
 from arch import arch_model
 import numpy as np
-import streamlit as st 
-import matplotlib.pyplot as plt
+import streamlit as st
 import plotly.graph_objs as go
 import requests
 
-
-
-
 # Configuration de la page Streamlit
 st.set_page_config(
-    page_title="Volatility Analysis Multi-Assets",  
-    page_icon="📊",  
-    layout="wide",  
-    initial_sidebar_state="expanded",  
+    page_title="Volatility Analysis Multi-Assets",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
     menu_items={
-        'Get Help': 'https://www.example.com/help',  
-        'Report a bug': 'https://www.example.com/bug',  
+        'Get Help': 'https://www.example.com/help',
+        'Report a bug': 'https://www.example.com/bug',
         'About': "# Analyse en temps réel de la volatilité de plusieurs actifs\nCette application analyse la volatilité de plusieurs actifs en temps réel à l'aide du modèle EWMA."
     }
 )
-# Initialisation de `st.session_state` pour stocker les données
-if "volatility_data" not in st.session_state:
-    st.session_state.volatility_data = {}
+
+# Initialisation des variables dans `st.session_state`
 if "data_list" not in st.session_state:
     st.session_state.data_list = {}
+if "volatility_data" not in st.session_state:
+    st.session_state.volatility_data = {}
 if "chart_fig" not in st.session_state:
     st.session_state.chart_fig = go.Figure()
 if "last_chart_update" not in st.session_state:
     st.session_state.last_chart_update = 0
-    
-# Barre latérale pour la sélection du stock/actif
+
+# Barre latérale pour la configuration
 st.sidebar.title("Volatility Analysis Settings")
-
-# Sélection de plusieurs actifs pour comparaison
-
 selected_assets = st.sidebar.multiselect(
-        "Choose the cryptocurrencies:",
-        ["BTC-PERPETUAL", "ETH-PERPETUAL", "SOL-PERPETUAL", "ADA-PERPETUAL", "AVAX-PERPETUAL"]
-    )
+    "Choose the cryptocurrencies:",
+    ["BTC-PERPETUAL", "ETH-PERPETUAL", "SOL-PERPETUAL", "ADA-PERPETUAL", "AVAX-PERPETUAL"]
+)
 data_window = st.sidebar.number_input(
     "Data window size (number of data points):", min_value=50, max_value=500, value=100, step=10
 )
 update_interval = st.sidebar.number_input(
     "Time interval between updates (in seconds):", min_value=0.1, max_value=60.0, value=10.0, step=0.1
 )
-
-# Placeholder pour le graphique
-chart_placeholder = st.empty()
-
-# Placeholder pour le statut des données
-status_placeholder = st.container()
-with status_placeholder:
-    st.subheader("Data and Volatility Status")
-    data_status = {asset: st.empty() for asset in selected_assets}
-
-
-# Champs de saisie pour l'email, la fenêtre de données, et l'intervalle de prédiction dans la sidebar
 to_email = st.sidebar.text_input("Enter your email address to receive reports:")
-data_window = st.sidebar.number_input("Enter the data window size (number of data points):", min_value=50, max_value=500, value=100, step=10)
-time_between_predictions = st.sidebar.number_input("Time interval between predictions (in seconds):", min_value=0.1, max_value=60.0, value=10.0, step=0.1)
 
-# Titre et description de l'application
-st.title(f"Real-time volatility (EWMA) for selected assets")
-st.write(f"This Streamlit application enables you to track the volatility of multiple assets in real time, calculated instantly from market data transmitted via WebSocket. An interactive graph continuously illustrates changes in the volatility of these assets. When 100 real-time estimates are collected, a full report is automatically sent by e-mail.")
-
-
-
+# Vérification de l'email
 if not to_email:
     st.warning("Please enter your email address to receive the volatility reports.")
     st.stop()
-status_placeholder = st.container()
-progress_bar = st.progress(0)
 
+# Titre principal
+st.title(f"Real-time volatility (EWMA) for selected assets")
+st.write(
+    f"This Streamlit application enables you to track the volatility of multiple assets in real time, calculated instantly from market data transmitted via WebSocket."
+)
 
-
-# URL du WebSocket Deribit (environnement de test ou production)
-DERIBIT_WS_URL = "wss://test.deribit.com/ws/api/v2"
-
-# Variables pour stocker les données par actif
-subscribed_channels = set()
-
-collecte_terminee = False  
-last_volatility_calc_time = time.time() - 3 
-# Initialisation des espaces dans `st.session_state` si non définis
-# Initialisation des espaces dans `st.session_state` si non définis
-if "data_list" not in st.session_state:
-    st.session_state.data_list = {asset: [] for asset in selected_assets}
-if "volatility_data" not in st.session_state:
-    st.session_state.volatility_data = {asset: [] for asset in selected_assets}
-
-
-
-
-
-# Placeholders et gestion de l'interface utilisateur
+# Placeholder pour le graphique
+chart_placeholder = st.empty()
 status_placeholder = st.container()
 
-with status_placeholder:
-    st.subheader("Suivi des données et calculs de volatilité")    
-    data_status = {asset: st.empty() for asset in selected_assets}
+# Fonction utilitaire pour récupérer ou initialiser les données
+def get_cached_data(data_type, asset):
+    if asset not in st.session_state[data_type]:
+        st.session_state[data_type][asset] = []
+    return st.session_state[data_type][asset]
 
-
-def reset_session_state():
-    """Réinitialise les espaces de stockage dans st.session_state."""
-    st.session_state.data_list = {asset: [] for asset in selected_assets}
-    st.session_state.volatility_data = {asset: [] for asset in selected_assets}
-
-# Initialisation des espaces dans st.session_state au démarrage
-if "app_initialized" not in st.session_state:
-    # Réinitialisation des données
-    reset_session_state()
-    # Marquer l'application comme initialisée
-    st.session_state.app_initialized = True
-
-
-
-
-
-
-
-
-
-# Fonction utilitaire pour récupérer les données de volatilité en cache
-def get_cached_volatility_data(asset):
-    """Récupère ou initialise les données de volatilité pour un actif donné."""
-    if asset not in st.session_state.volatility_data:
-        st.session_state.volatility_data[asset] = []
-    return st.session_state.volatility_data[asset]
-
-
-# Fonction utilitaire pour récupérer ou initialiser les fenêtres de prix
-def get_cached_price_data(asset):
-    """Récupère ou initialise les données de prix pour un actif donné."""
-    if asset not in st.session_state.data_list:
-        st.session_state.data_list[asset] = []
-    return st.session_state.data_list[asset]
-
-# Fonction pour mettre à jour le graphique
+# Fonction de mise à jour du graphique
 def update_chart():
-    """Met à jour le graphique en ajoutant les nouvelles données sans créer de doublons."""
     current_time = time.time()
     if current_time - st.session_state["last_chart_update"] < update_interval:
-        return  # Respectez l'intervalle minimal entre les mises à jour
+        return
 
     fig = st.session_state["chart_fig"]
-
     for asset in selected_assets:
-        cached_volatility = get_cached_volatility_data(asset)
-        if len(cached_volatility) > 0:
+        cached_volatility = get_cached_data("volatility_data", asset)
+        if cached_volatility:
             df = pd.DataFrame(cached_volatility)
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
 
-            # Vérifiez si la trace existe déjà
-            existing_trace_names = [trace.name for trace in fig.data]
-            if f'Volatility (EWMA) - {asset}' in existing_trace_names:
-                # Mettez à jour la trace existante
-                trace_index = existing_trace_names.index(f'Volatility (EWMA) - {asset}')
+            if f'Volatility (EWMA) - {asset}' in [trace.name for trace in fig.data]:
+                trace_index = [trace.name for trace in fig.data].index(f'Volatility (EWMA) - {asset}')
                 fig.data[trace_index].x = df['timestamp']
                 fig.data[trace_index].y = df['volatility']
             else:
-                # Ajoutez une nouvelle trace si elle n'existe pas
                 fig.add_trace(go.Scatter(
                     x=df['timestamp'],
                     y=df['volatility'],
@@ -183,10 +102,14 @@ def update_chart():
         template="plotly_dark"
     )
 
-    st.session_state["chart_fig"] = fig  # Sauvegardez le graphique mis à jour dans st.session_state
+    st.session_state["chart_fig"] = fig
     chart_placeholder.plotly_chart(fig, use_container_width=True)
     st.session_state["last_chart_update"] = current_time
 
+# Placeholder des statuts des données
+with status_placeholder:
+    st.subheader("Data and Volatility Status")
+    data_status = {asset: st.empty() for asset in selected_assets}
 
 
 # Calcul de la volatilité avec le modèle EWMA
