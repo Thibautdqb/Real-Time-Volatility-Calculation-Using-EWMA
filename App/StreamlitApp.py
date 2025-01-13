@@ -89,13 +89,6 @@ if "volatility_data" not in st.session_state:
     st.session_state.volatility_data = {asset: [] for asset in selected_assets}
 
 
-progress_bars = {asset: st.progress(0) for asset in selected_assets}
-
-# Mettre à jour la progression pour chaque actif
-def update_progress_bar(asset):
-    current_length = len(data_list[asset])
-    progress = min(current_length / data_window, 1.0)  # Calcul du pourcentage
-    progress_bars[asset].progress(int(progress * 100)) 
 
 
 def reset_session_state():
@@ -236,7 +229,6 @@ def on_message(ws, message):
                     removed = cached_prices.pop(0)
                     
                     print(f"Donnée supprimée pour {asset} (fenêtre limitée à {data_window}): {removed}")
-                    update_progress_bar(asset)
                 # Mettre à jour `st.session_state`
                 st.session_state.data_list[asset] = cached_prices
 
