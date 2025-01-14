@@ -540,10 +540,10 @@ def afficher_progression():
     directement sur la page principale, avec un tableau dynamique.
     """
     st.subheader("Progression des données de remplissage")
-    
+
     # Créer une colonne pour chaque type de progression
     col1, col2 = st.columns(2)
-    
+
     # Conteneur pour afficher le tableau final des données
     tableau_container = st.container()
 
@@ -553,18 +553,26 @@ def afficher_progression():
     for asset in selected_assets:
         with col1:
             st.text(f"Progression pour {asset}")
-            
+
             # Progression des données de prix
             data_points = len(st.session_state.data_list.get(asset, []))
             price_progress = data_points / data_window * 100 if data_window > 0 else 0
+
+            # Debugging
+            st.text(f"DEBUG: {asset} - Points de données collectés : {data_points}")
+
             st.text(f"Données de prix : {data_points}/{data_window}")
             st.progress(min(int(price_progress), 100))  # Barre de progression
 
         with col2:
             # Progression des données de volatilité
             volatility_points = len(st.session_state.volatility_data.get(asset, []))
+
+            # Debugging
+            st.text(f"DEBUG: {asset} - Points de volatilité calculés : {volatility_points}")
+
             st.text(f"Données de volatilité : {volatility_points} points calculés")
-            
+
             if volatility_points > 0:
                 last_volatility = st.session_state.volatility_data[asset][-1]["volatility"]
                 st.metric(label="Dernière volatilité", value=f"{last_volatility:.6f}")
@@ -583,6 +591,7 @@ def afficher_progression():
     with tableau_container:
         st.subheader("Résumé des données")
         st.dataframe(pd.DataFrame(progression_data))
+
 
 
 if __name__ == "__main__":
