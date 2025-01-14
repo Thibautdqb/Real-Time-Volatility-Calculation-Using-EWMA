@@ -448,61 +448,61 @@ def calculer_volatilite_initiale(asset, historique_data, lambda_factor=0.94):
 
 def charger_donnees_tick_deribit(asset):
     """
-    Cette fonction récupère des données de l'heure précédente pour un actif donné via l'API de Deribit.
+    Cette fonction récupère des données de l'heure précédente pour un actif donné via l'API de Deribit,
+    et retourne une liste de dictionnaires au format :
+    [
+        {
+            'timestamp': <timestamp en secondes>,
+            'mark_price': <prix de clôture>
+        },
+        ...
+    ]
     """
     url = "https://www.deribit.com/api/v2/public/get_tradingview_chart_data"
 
-    # Calcul des timestamps pour l'heure précédente
-    end_timestamp = int(time.time() * 1000)  # Timestamp actuel en millisecondes
-    start_timestamp = end_timestamp - 3600000  # Une heure avant en millisecondes
+    # Calcul des timestamps pour l'heure précédente (en millisecondes)
+    end_timestamp = int(time.time() * 1000)
+    start_timestamp = end_timestamp - 3600000  # 1 heure avant en millisecondes
 
     params = {
         "instrument_name": asset,
-        "resolution": "1",  # Utiliser une résolution fine (1 minute)
+        "resolution": "1",  # Résolution à 1 minute
         "start_timestamp": start_timestamp,
         "end_timestamp": end_timestamp
     }
 
     try:
         response = requests.get(url, params=params)
-        response.raise_for_status()  # vérifie si la requête a échoué
+        response.raise_for_status()  # Vérifie si la requête a échoué
         data = response.json()
 
         # Vérifie si le résultat est valide et contient les clés nécessaires
         if "result" in data and all(key in data["result"] for key in ["ticks", "close"]):
-            historique_data = [{'timestamp': ts / 1000, 'mark_price': close} 
-                               for ts, close in zip(data["result"]["ticks"], data["result"]["close"])]
+            historique_data = [
+                {
+                    'timestamp': ts / 1000,
+                    'mark_price': close
+                } 
+                for ts, close in zip(data["result"]["ticks"], data["result"]["close"])
+            ]
 
-            # Convertir les données en DataFrame pour un affichage plus lisible
+            # Exemple : création de DataFrame pour un éventuel usage interne
             df = pd.DataFrame(historique_data)
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
-
-            # Afficher le titre et les DataFrames côte à côte avec une seule paire de colonnes
-            st.title(f"Datasets des données historiques pour {asset}")
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.write("Données brutes")
-                st.dataframe(df)
-
-            with col2:
-                # Exemple : affiche une autre DataFrame (ici on peut utiliser une transformation ou un autre jeu de données)
-                df_analyse = df.copy()  # Transformer les données pour l'exemple
-                df_analyse['variation'] = df['mark_price'].pct_change() * 100
-                st.write("Données avec variation en %")
-                st.dataframe(df_analyse)
+            # df_analyse = df.copy()
+            # df_analyse['variation'] = df['mark_price'].pct_change() * 100
 
             return historique_data
         else:
-            st.warning(f"Les données de l'heure précédente pour {asset} ne sont pas disponibles ou sont incomplètes.")
+            print(f"Les données de l'heure précédente pour {asset} ne sont pas disponibles ou sont incomplètes.")
             return []
 
     except requests.exceptions.RequestException as e:
-        st.warning(f"Erreur de connexion pour récupérer les données de {asset}: {e}")
+        print(f"Erreur de connexion pour récupérer les données de {asset}: {e}")
         return []
     except Exception as e:
-        st.warning(f"Une erreur inattendue est survenue lors de la récupération des données pour {asset}: {e}")
-        return []  
+        print(f"Une erreur inattendue est survenue lors de la récupération des données pour {asset}: {e}")
+        return []
 
 
 
