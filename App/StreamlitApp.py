@@ -54,8 +54,8 @@ data_window = st.sidebar.number_input("Enter the data window size (number of dat
 time_between_predictions = st.sidebar.number_input("Time interval between predictions (in seconds):", min_value=0.1, max_value=60.0, value=10.0, step=0.1)
 
 # Titre et description de l'application
-st.title(f"Real-time volatility (EWMA) for selected assets")
-st.write(f"This Streamlit application enables you to track the volatility of multiple assets in real time, calculated instantly from market data transmitted via WebSocket. An interactive graph continuously illustrates changes in the volatility of these assets. When 100 real-time estimates are collected, a full report is automatically sent by e-mail.")
+st.sidebar.title(f"Real-time volatility (EWMA) for selected assets")
+st.sidebar.write(f"This Streamlit application enables you to track the volatility of multiple assets in real time, calculated instantly from market data transmitted via WebSocket. An interactive graph continuously illustrates changes in the volatility of these assets. When 100 real-time estimates are collected, a full report is automatically sent by e-mail.")
 
 # Placeholder pour le graphique
 chart_placeholder = st.empty()
