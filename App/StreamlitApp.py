@@ -538,59 +538,39 @@ def augmenter_resolution_historique(historique_data, interval_seconds):
 def afficher_progression():
     """
     Affiche la progression du remplissage des données pour chaque actif
-    directement sur la page principale, avec un tableau dynamique.
+    dans un tableau unique qui est mis à jour dynamiquement.
     """
     st.subheader("Progression des données de remplissage")
 
-    # Créer une colonne pour chaque type de progression
-    col1, col2 = st.columns(2)
-
     # Conteneur pour afficher le tableau final des données
-    tableau_container = st.container()
+    tableau_container = st.empty()  # Utilisation de st.empty pour un affichage unique et dynamique
 
     # Initialiser une liste pour construire le tableau de progression
     progression_data = []
 
     for asset in selected_assets:
-        with col1:
-            st.text(f"Progression pour {asset}")
+        # Récupérer les données de progression
+        data_points = len(st.session_state.data_list.get(asset, []))
+        price_progress = f"{data_points}/{data_window}"  # Format progression des prix
+        volatility_points = len(st.session_state.volatility_data.get(asset, []))
 
-            # Progression des données de prix
-            data_points = len(st.session_state.data_list.get(asset, []))
-            price_progress = data_points / data_window * 100 if data_window > 0 else 0
-
-            # Debugging
-            st.text(f"DEBUG: {asset} - Points de données collectés : {data_points}")
-
-            st.text(f"Données de prix : {data_points}/{data_window}")
-            st.progress(min(int(price_progress), 100))  # Barre de progression
-
-        with col2:
-            # Progression des données de volatilité
-            volatility_points = len(st.session_state.volatility_data.get(asset, []))
-
-            # Debugging
-            st.text(f"DEBUG: {asset} - Points de volatilité calculés : {volatility_points}")
-
-            st.text(f"Données de volatilité : {volatility_points} points calculés")
-
-            if volatility_points > 0:
-                last_volatility = st.session_state.volatility_data[asset][-1]["volatility"]
-                st.metric(label="Dernière volatilité", value=f"{last_volatility:.6f}")
-            else:
-                st.text("Aucune donnée de volatilité disponible pour l'instant.")
+        # Récupérer la dernière volatilité, si disponible
+        last_volatility = (
+            f"{st.session_state.volatility_data[asset][-1]['volatility']:.6f}"
+            if volatility_points > 0
+            else "N/A"
+        )
 
         # Ajouter les données dans la liste pour le tableau
         progression_data.append({
             "Actif": asset,
-            "Données de prix (points)": f"{data_points}/{data_window}",
+            "Progression des données de prix": price_progress,
             "Données de volatilité (points)": volatility_points,
-            "Dernière volatilité calculée": f"{last_volatility:.6f}" if volatility_points > 0 else "N/A"
+            "Dernière volatilité calculée": last_volatility
         })
 
-    # Afficher le tableau dans le conteneur
+    # Afficher le tableau dans le conteneur (mis à jour dynamiquement)
     with tableau_container:
-        st.subheader("Résumé des données")
         st.dataframe(pd.DataFrame(progression_data))
 
 
