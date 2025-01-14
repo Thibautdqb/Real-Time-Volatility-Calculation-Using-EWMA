@@ -541,24 +541,24 @@ def afficher_progression():
     """
     st.sidebar.title("Progression des données")
     
-    # Conteneurs pour chaque actif
+    # Boucle sur chaque actif sélectionné pour afficher la progression
     for asset in selected_assets:
-        st.subheader(f"Progression pour {asset}")
+        st.sidebar.subheader(f"Progression pour {asset}")
 
-        # Calcul de la progression des données de prix
-        data_points = len(st.session_state.data_list[asset])
-        price_progress = data_points / data_window * 100
-        st.text(f"Données de prix : {data_points}/{data_window}")
-        st.progress(min(int(price_progress), 100))
+        # Progression des données de prix
+        data_points = len(st.session_state.data_list.get(asset, []))
+        price_progress = data_points / data_window * 100 if data_window > 0 else 0
+        st.sidebar.text(f"Données de prix : {data_points}/{data_window}")
+        st.sidebar.progress(min(int(price_progress), 100))  # Afficher la progression
 
-        # Calcul de la progression des données de volatilité
-        volatility_points = len(st.session_state.volatility_data[asset])
-        st.text(f"Données de volatilité : {volatility_points} points calculés")
+        # Progression des données de volatilité
+        volatility_points = len(st.session_state.volatility_data.get(asset, []))
+        st.sidebar.text(f"Données de volatilité : {volatility_points} points calculés")
         if volatility_points > 0:
             last_volatility = st.session_state.volatility_data[asset][-1]["volatility"]
-            st.metric(label="Dernière volatilité", value=f"{last_volatility:.6f}")
+            st.sidebar.metric(label="Dernière volatilité", value=f"{last_volatility:.6f}")
         else:
-            st.write("Aucune donnée de volatilité disponible pour l'instant.")
+            st.sidebar.text("Aucune donnée de volatilité disponible pour l'instant.")
 
 
 if __name__ == "__main__":
