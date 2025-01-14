@@ -537,41 +537,45 @@ def augmenter_resolution_historique(historique_data, interval_seconds):
 
 def afficher_progression():
     """
-    Affiche la progression du remplissage des données pour chaque actif
-    dans un tableau unique qui est mis à jour dynamiquement.
+    Affiche un tableau unique et dynamique qui montre la progression des données
+    et les met à jour en temps réel.
     """
     st.subheader("Progression des données de remplissage")
 
-    # Conteneur pour afficher le tableau final des données
-    tableau_container = st.empty()  # Utilisation de st.empty pour un affichage unique et dynamique
+    # Utilisation d'un conteneur fixe pour le tableau
+    tableau_container = st.empty()  # Réserve un emplacement unique
 
-    # Initialiser une liste pour construire le tableau de progression
+    # Collecte des données pour le tableau
     progression_data = []
 
     for asset in selected_assets:
-        # Récupérer les données de progression
+        # Données de prix
         data_points = len(st.session_state.data_list.get(asset, []))
-        price_progress = f"{data_points}/{data_window}"  # Format progression des prix
+        price_progress = f"{data_points}/{data_window}"  # Progression des prix
         volatility_points = len(st.session_state.volatility_data.get(asset, []))
 
-        # Récupérer la dernière volatilité, si disponible
+        # Dernière volatilité
         last_volatility = (
             f"{st.session_state.volatility_data[asset][-1]['volatility']:.6f}"
             if volatility_points > 0
             else "N/A"
         )
 
-        # Ajouter les données dans la liste pour le tableau
+        # Ajout des informations dans la liste de progression
         progression_data.append({
             "Actif": asset,
             "Progression des données de prix": price_progress,
             "Données de volatilité (points)": volatility_points,
-            "Dernière volatilité calculée": last_volatility
+            "Dernière volatilité calculée": last_volatility,
         })
 
-    # Afficher le tableau dans le conteneur (mis à jour dynamiquement)
+    # Rafraîchissement dynamique du tableau
     with tableau_container:
         st.dataframe(pd.DataFrame(progression_data))
+
+    # Forcer une réexécution si nécessaire pour actualiser
+    st.experimental_rerun()
+
 
 
 
