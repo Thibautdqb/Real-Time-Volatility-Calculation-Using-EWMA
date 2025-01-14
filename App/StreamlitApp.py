@@ -573,9 +573,9 @@ if __name__ == "__main__":
 
             # Calculer la volatilité initiale
             calculer_volatilite_initiale(asset, historique_data)
+            afficher_progression()
         else:
             st.warning(f"Pas de données historiques pour l'actif {asset}.")
-    afficher_progression()
 
     # Mise à jour du graphique une seule fois après le traitement de toutes les données
     update_chart()  # Affiche le graphique après avoir traité tous les actifs
