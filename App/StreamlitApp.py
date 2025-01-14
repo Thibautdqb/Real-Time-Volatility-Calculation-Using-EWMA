@@ -254,6 +254,7 @@ def on_message(ws, message):
 
                     # Calculer la volatilité en utilisant le modèle EWMA
                     new_volatility = appliquer_modele_ewma(asset, cached_prices)
+                    afficher_progression()
 
                     if new_volatility is not None:
                         print(f"Nouvelle volatilité calculée pour {asset}: {new_volatility}")
@@ -586,7 +587,6 @@ if __name__ == "__main__":
 
             # Calculer la volatilité initiale
             calculer_volatilite_initiale(asset, historique_data)
-            afficher_progression()  # Met à jour le tableau après chaque actif
 
         else:
             st.warning(f"Pas de données historiques pour l'actif {asset}.")
