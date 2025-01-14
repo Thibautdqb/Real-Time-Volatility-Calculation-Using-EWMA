@@ -197,7 +197,6 @@ def appliquer_modele_ewma(asset, price_data, lambda_factor=0.94):
 def on_message(ws, message):
     """Gère les messages reçus via WebSocket et traite les données en temps réel."""
     global last_volatility_calc_time
-    afficher_progression()
 
     # Charger la réponse JSON
     response = json.loads(message)
@@ -587,6 +586,8 @@ if __name__ == "__main__":
 
             # Calculer la volatilité initiale
             calculer_volatilite_initiale(asset, historique_data)
+            afficher_progression()  # Met à jour le tableau après chaque actif
+
         else:
             st.warning(f"Pas de données historiques pour l'actif {asset}.")
 
