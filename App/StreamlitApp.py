@@ -536,29 +536,53 @@ def augmenter_resolution_historique(historique_data, interval_seconds):
 
 def afficher_progression():
     """
-    Affiche la progression du remplissage des données pour chaque actif,
-    y compris les données de prix et les données de volatilité.
+    Affiche la progression du remplissage des données pour chaque actif
+    directement sur la page principale, avec un tableau dynamique.
     """
-    st.sidebar.title("Progression des données")
+    st.subheader("Progression des données de remplissage")
     
-    # Boucle sur chaque actif sélectionné pour afficher la progression
+    # Créer une colonne pour chaque type de progression
+    col1, col2 = st.columns(2)
+    
+    # Conteneur pour afficher le tableau final des données
+    tableau_container = st.container()
+
+    # Initialiser une liste pour construire le tableau de progression
+    progression_data = []
+
     for asset in selected_assets:
-        st.sidebar.subheader(f"Progression pour {asset}")
+        with col1:
+            st.text(f"Progression pour {asset}")
+            
+            # Progression des données de prix
+            data_points = len(st.session_state.data_list.get(asset, []))
+            price_progress = data_points / data_window * 100 if data_window > 0 else 0
+            st.text(f"Données de prix : {data_points}/{data_window}")
+            st.progress(min(int(price_progress), 100))  # Barre de progression
 
-        # Progression des données de prix
-        data_points = len(st.session_state.data_list.get(asset, []))
-        price_progress = data_points / data_window * 100 if data_window > 0 else 0
-        st.sidebar.text(f"Données de prix : {data_points}/{data_window}")
-        st.sidebar.progress(min(int(price_progress), 100))  # Afficher la progression
+        with col2:
+            # Progression des données de volatilité
+            volatility_points = len(st.session_state.volatility_data.get(asset, []))
+            st.text(f"Données de volatilité : {volatility_points} points calculés")
+            
+            if volatility_points > 0:
+                last_volatility = st.session_state.volatility_data[asset][-1]["volatility"]
+                st.metric(label="Dernière volatilité", value=f"{last_volatility:.6f}")
+            else:
+                st.text("Aucune donnée de volatilité disponible pour l'instant.")
 
-        # Progression des données de volatilité
-        volatility_points = len(st.session_state.volatility_data.get(asset, []))
-        st.sidebar.text(f"Données de volatilité : {volatility_points} points calculés")
-        if volatility_points > 0:
-            last_volatility = st.session_state.volatility_data[asset][-1]["volatility"]
-            st.sidebar.metric(label="Dernière volatilité", value=f"{last_volatility:.6f}")
-        else:
-            st.sidebar.text("Aucune donnée de volatilité disponible pour l'instant.")
+        # Ajouter les données dans la liste pour le tableau
+        progression_data.append({
+            "Actif": asset,
+            "Données de prix (points)": f"{data_points}/{data_window}",
+            "Données de volatilité (points)": volatility_points,
+            "Dernière volatilité calculée": f"{last_volatility:.6f}" if volatility_points > 0 else "N/A"
+        })
+
+    # Afficher le tableau dans le conteneur
+    with tableau_container:
+        st.subheader("Résumé des données")
+        st.dataframe(pd.DataFrame(progression_data))
 
 
 if __name__ == "__main__":
