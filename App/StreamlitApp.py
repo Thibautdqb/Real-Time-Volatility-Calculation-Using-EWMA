@@ -581,8 +581,7 @@ if __name__ == "__main__":
         if historique_data:
             historique_data = augmenter_resolution_historique(historique_data, int(time_between_predictions))
             # Afficher les données interpolées pour vérifier
-            st.write(f"Données interpolées pour {asset} (intervalle : {time_between_predictions} secondes):")
-            st.dataframe(pd.DataFrame(historique_data))
+
 
             # Calculer la volatilité initiale
             calculer_volatilite_initiale(asset, historique_data)
